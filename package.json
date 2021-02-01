@@ -1,0 +1,65 @@
+{
+  "name": "tsc-multi",
+  "version": "0.0.0",
+  "description": "",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
+    "clean": "rm -rf dist"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tommy351/tsc-multi.git"
+  },
+  "keywords": [
+    "typescript",
+    "tsc"
+  ],
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "author": "Tommy Chen <tommy351@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tommy351/tsc-multi/issues"
+  },
+  "homepage": "https://github.com/tommy351/tsc-multi#readme",
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx}": "eslint --fix"
+  },
+  "engines": {
+    "node": ">=12.11.0"
+  },
+  "dependencies": {
+    "fs-extra": "^9.1.0",
+    "lodash.omit": "^4.5.0",
+    "tslib": "^2.1.0",
+    "yargs": "^16.2.0"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^9.0.6",
+    "@types/lodash.omit": "^4.5.6",
+    "@types/node": "^14.14.22",
+    "@types/yargs": "^16.0.0",
+    "@typescript-eslint/eslint-plugin": "^4.12.0",
+    "@typescript-eslint/parser": "^4.12.0",
+    "eslint": "^7.17.0",
+    "eslint-config-prettier": "^7.1.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-react": "^7.22.0",
+    "husky": "^4.3.7",
+    "lint-staged": "^10.5.3",
+    "prettier": "^2.2.1",
+    "typescript": "^4.1.3"
+  },
+  "peerDependencies": {
+    "typescript": ">=3"
+  }
+}
