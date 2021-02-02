@@ -1,10 +1,10 @@
 import { fork } from "child_process";
 import { join } from "path";
 import { Config, Target } from "./config";
-import { WorkerOptions } from "./worker";
+import { WorkerOptions } from "./worker/types";
 import stringToStream from "string-to-stream";
 
-const WORKER_PATH = join(__dirname, "worker.js");
+const WORKER_PATH = join(__dirname, "worker/entry.js");
 
 export interface BuildOptions extends Config {
   watch?: boolean;

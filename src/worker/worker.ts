@@ -1,40 +1,25 @@
 import ts from "typescript";
-import { Target } from "./config";
-import getStdin from "get-stdin";
-import Debug from "./debug";
+import debug from "./debug";
 import {
   reportDiagnostic,
   reportErrorSummary,
   reportSolutionBuilderStatus,
   reportWatchStatus,
-} from "./report";
+} from "../report";
 import omit from "lodash.omit";
-import { mergeCustomTransformers, trimSuffix } from "./utils";
-import { createRewriteImportTransformer } from "./transformers/rewriteImport";
-
-const debug = Debug.extend(`worker:${process.pid}`);
+import { mergeCustomTransformers, trimSuffix } from "../utils";
+import { createRewriteImportTransformer } from "../transformers/rewriteImport";
+import { WorkerOptions } from "./types";
 
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
 const JS_MAP_EXT = `${JS_EXT}${MAP_EXT}`;
 
-const parseConfigFileHost: ts.ParseConfigFileHost = {
-  ...ts.sys,
-  onUnRecoverableConfigFileDiagnostic() {
-    // do nothing
-  },
-};
-
-export interface WorkerOptions {
-  target: Target;
-  verbose?: boolean;
-  watch?: boolean;
-  clean?: boolean;
-  projects: string[];
-}
-
-class Worker {
-  constructor(private readonly data: WorkerOptions) {}
+export class Worker {
+  constructor(
+    private readonly data: WorkerOptions,
+    private readonly system: ts.System = ts.sys
+  ) {}
 
   public run(): number {
     const builder = this.createBuilder();
@@ -93,7 +78,7 @@ class Worker {
 
     if (this.data.watch) {
       const host = ts.createSolutionBuilderWithWatchHost(
-        ts.sys,
+        this.system,
         createProgram,
         reportDiagnostic,
         reportSolutionBuilderStatus,
@@ -108,7 +93,7 @@ class Worker {
       );
     }
     const host = ts.createSolutionBuilderHost(
-      ts.sys,
+      this.system,
       createProgram,
       reportDiagnostic,
       reportSolutionBuilderStatus,
@@ -122,13 +107,7 @@ class Worker {
   private patchSolutionBuilderHost<T extends ts.BuilderProgram>(
     host: ts.SolutionBuilderHostBase<T>
   ) {
-    const {
-      writeFile = ts.sys.writeFile,
-      deleteFile,
-      fileExists,
-      readFile,
-      createProgram,
-    } = host;
+    const { writeFile, deleteFile, fileExists, readFile, createProgram } = host;
 
     const transformers: ts.CustomTransformers = {
       after: [
@@ -136,6 +115,13 @@ class Worker {
           extname: this.data.target.extname || JS_EXT,
         }),
       ],
+    };
+
+    const parseConfigFileHost: ts.ParseConfigFileHost = {
+      ...this.system,
+      onUnRecoverableConfigFileDiagnostic() {
+        // do nothing
+      },
     };
 
     host.getParsedCommandLine = (path: string) => {
@@ -199,7 +185,7 @@ class Worker {
       })();
 
       debug("Write file: %s", newPath);
-      writeFile(newPath, newData, writeByteOrderMark);
+      writeFile?.(newPath, newData, writeByteOrderMark);
     };
 
     host.deleteFile = (path) => {
@@ -209,21 +195,3 @@ class Worker {
     };
   }
 }
-
-async function loadWorkerData(): Promise<WorkerOptions> {
-  const stdin = await getStdin();
-  return JSON.parse(stdin);
-}
-
-(async () => {
-  debug("Worker started");
-
-  const workerData = await loadWorkerData();
-  debug("Target", workerData.target);
-
-  const worker = new Worker(workerData);
-  return worker.run();
-})().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
