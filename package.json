@@ -1,7 +1,12 @@
 {
   "name": "tsc-multi",
   "version": "0.0.0",
-  "description": "",
+  "description": "Compile TypeScript projects into multiple targets.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "tsc-multi": "bin/tsc-multi.js"
+  },
   "scripts": {
     "build": "tsc",
     "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
