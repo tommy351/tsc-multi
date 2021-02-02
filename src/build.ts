@@ -1,45 +1,38 @@
-import { join, resolve } from "path";
-import ts from "typescript";
-import { Worker } from "worker_threads";
-import { BaseBuildOptions, Target } from "./types";
-import { WorkerData } from "./worker";
+import { fork } from "child_process";
+import { join } from "path";
+import { Config, Target } from "./config";
+import { WorkerOptions } from "./worker";
+import stringToStream from "string-to-stream";
 
-export interface BuildOptions extends BaseBuildOptions {
-  projects: string[];
-  targets: Target[];
-  cwd?: string;
+const WORKER_PATH = join(__dirname, "worker.js");
+
+export interface BuildOptions extends Config {
+  watch?: boolean;
+  clean?: boolean;
 }
 
 export async function build({
-  cwd = process.cwd(),
-  projects = [],
-  targets = [],
-  ...options
+  targets,
+  ...config
 }: BuildOptions): Promise<number> {
-  if (!projects.length) {
-    throw new Error("At least one project is required");
-  }
-
-  if (!targets.length) {
-    throw new Error("At least one targets is required");
-  }
-
-  const rootNames = projects.map((path) => {
-    const searchPath = resolve(cwd, path);
-    return ts.findConfigFile(searchPath, ts.sys.fileExists) || searchPath;
-  });
-
   function runWorker(target: Target): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const data: WorkerData = {
-        rootNames,
+    return new Promise<number>((resolve, reject) => {
+      const data: WorkerOptions = {
         target,
-        ...options,
+        verbose: config.verbose,
+        watch: config.watch,
+        clean: config.clean,
+        projects: config.projects,
       };
 
-      const worker = new Worker(join(__dirname, "worker.js"), {
-        workerData: data,
+      const worker = fork(WORKER_PATH, {
+        cwd: config.cwd,
+        stdio: ["pipe", "inherit", "inherit", "ipc"],
       });
+
+      if (worker.stdin) {
+        stringToStream(JSON.stringify(data)).pipe(worker.stdin);
+      }
 
       worker.on("error", reject);
       worker.on("exit", resolve);

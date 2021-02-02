@@ -1,7 +1,6 @@
-import { resolve } from "path";
 import yargs from "yargs/yargs";
 import { build } from "./build";
-import { readJSON } from "fs-extra";
+import { loadConfig } from "./config";
 
 const args = yargs(process.argv.slice(2))
   .options({
@@ -39,26 +38,20 @@ const args = yargs(process.argv.slice(2))
   )
   .showHelpOnFail(false).argv;
 
-async function readConfig(path: string) {
-  try {
-    return await readJSON(path);
-  } catch (err) {
-    if (err.code === "ENOENT") return {};
-    throw err;
-  }
-}
-
 (async () => {
-  const cwd = args.cwd || process.cwd();
-  const configPath = resolve(cwd, args.config || "tsc-multi.json");
-  const config = await readConfig(configPath);
+  const projects = ([] as string[]).concat(args.projects || []);
+  const config = await loadConfig({
+    cwd: args.cwd,
+    path: args.config,
+    extras: {
+      ...(projects.length && { projects }),
+    },
+  });
   const code = await build({
-    projects: ([] as string[]).concat(args.projects || []),
+    ...config,
+    ...(args.verbose != null && { verbose: args.verbose }),
     watch: args.watch,
     clean: args.clean,
-    verbose: args.verbose,
-    cwd,
-    ...config,
   });
 
   process.exitCode = code;

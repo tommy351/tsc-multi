@@ -1,2 +1,2 @@
-export { build, BuildOptions } from "./build";
-export { Target } from "./types";
+export { Config, Target, loadConfig } from "./config";
+export { BuildOptions, build } from "./build";
