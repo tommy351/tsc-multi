@@ -26,7 +26,7 @@ function runCLI(args: readonly string[] = [], options?: execa.Options) {
 }
 
 async function copyInputFixture(name: string) {
-  await copy(join(__dirname, "__fixtures__", "input", name), join(tmpDir.path));
+  await copy(join(__dirname, "__fixtures__", name), join(tmpDir.path));
 }
 
 async function writeConfigToPath(path: string, config: Partial<Config>) {
@@ -58,7 +58,7 @@ async function matchOutputFiles(name: string) {
 
   for (const [path, content] of Object.entries(files)) {
     expect(content).toMatchFile(
-      join(__dirname, "__fixtures__", "output", name, path)
+      join(__dirname, "__file_snapshots__", name, path)
     );
   }
 }
@@ -170,6 +170,44 @@ describe("single project", () => {
 
     await matchOutputFiles("single-project/only-esnext");
   });
+
+  test("set cwd", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+    });
+
+    const { exitCode } = await runCLI([".", "--cwd", tmpDir.path], {
+      cwd: __dirname,
+    });
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/only-esnext");
+  });
+
+  test("set tsconfig.json path", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+    });
+
+    const { exitCode } = await runCLI(["tsconfig.custom.json"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/custom-tsconfig");
+  });
+
+  test("clean files", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+      projects: ["tsconfig.custom.json"],
+    });
+
+    await runCLI([]);
+
+    const { exitCode } = await runCLI(["--clean"]);
+    expect(exitCode).toEqual(0);
+
+    expect(await listOutputFiles()).toEqual({});
+  });
 });
 
 describe("project references", () => {
@@ -237,5 +275,42 @@ describe("project references", () => {
     expect(exitCode).toEqual(0);
 
     expect(await listOutputFiles()).toEqual({});
+  });
+});
+
+describe("nested folders", () => {
+  beforeEach(async () => {
+    await copyInputFixture("nested-folders");
+  });
+
+  test("only commonjs", async () => {
+    await writeConfig({
+      targets: [{ module: "commonjs" }],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("nested-folders/only-commonjs");
+
+    // Check if the output files are executable
+    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+
+  test("only esnext", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("nested-folders/only-esnext");
+
+    // Check if the output files are executable
+    await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
+    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    expect(result.stdout).toEqual("Hello TypeScript");
   });
 });

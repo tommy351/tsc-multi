@@ -120,6 +120,7 @@ export class Worker {
       after: [
         createRewriteImportTransformer({
           extname: this.data.target.extname || JS_EXT,
+          system: this.system,
         }),
       ],
     };
