@@ -107,7 +107,14 @@ export class Worker {
   private patchSolutionBuilderHost<T extends ts.BuilderProgram>(
     host: ts.SolutionBuilderHostBase<T>
   ) {
-    const { writeFile, deleteFile, fileExists, readFile, createProgram } = host;
+    const {
+      writeFile,
+      deleteFile,
+      fileExists,
+      readFile,
+      createProgram,
+      reportDiagnostic,
+    } = host;
 
     const transformers: ts.CustomTransformers = {
       after: [
@@ -119,8 +126,8 @@ export class Worker {
 
     const parseConfigFileHost: ts.ParseConfigFileHost = {
       ...this.system,
-      onUnRecoverableConfigFileDiagnostic() {
-        // do nothing
+      onUnRecoverableConfigFileDiagnostic(diagnostic) {
+        reportDiagnostic?.(diagnostic);
       },
     };
 

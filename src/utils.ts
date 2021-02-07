@@ -1,4 +1,4 @@
-import { readJSON } from "fs-extra";
+import fs from "fs";
 import ts from "typescript";
 
 export function trimSuffix(input: string, suffix: string): string {
@@ -11,7 +11,8 @@ export function trimSuffix(input: string, suffix: string): string {
 
 export async function tryReadJSON(path: string): Promise<any> {
   try {
-    return await readJSON(path);
+    const content = await fs.promises.readFile(path, "utf8");
+    return JSON.parse(content);
   } catch (err) {
     if (err.code === "ENOENT") return {};
     throw err;

@@ -1,8 +1,0 @@
-{
-  "compilerOptions": {
-    "module": "esnext",
-    "outDir": "dist",
-    "moduleResolution": "node",
-    "declaration": true
-  }
-}

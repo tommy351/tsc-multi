@@ -15,9 +15,9 @@ import { tryReadJSON } from "./utils";
 const debug = Debug.extend("config");
 
 const targetSchema = object({
-  target: optional(string()),
-  module: optional(string()),
   extname: optional(string()),
+  module: optional(string()),
+  target: optional(string()),
 });
 
 export type Target = Infer<typeof targetSchema>;

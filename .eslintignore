@@ -1,2 +1,3 @@
 /node_modules/
 dist/
+/integration/__fixtures__/output/

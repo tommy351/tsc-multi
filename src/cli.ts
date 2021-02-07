@@ -11,7 +11,7 @@ const args = yargs(process.argv.slice(2))
     },
     clean: {
       type: "boolean",
-      description: "Delete built files.",
+      description: "Delete built files. Only available when rootDir is set.",
     },
     verbose: {
       type: "boolean",
