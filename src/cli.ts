@@ -23,7 +23,7 @@ const args = yargs(process.argv.slice(2))
     },
     config: {
       type: "string",
-      description: "Path of tsc-multi config file.",
+      description: "Path of the config file. Default to $CWD/tsc-multi.json.",
     },
   })
   .command(
@@ -32,7 +32,8 @@ const args = yargs(process.argv.slice(2))
     (cmd) => {
       return cmd.positional("projects", {
         type: "string",
-        description: "Path of tsconfig.json",
+        description:
+          "Path of TypeScript projects or tsconfig.json files. At least one project is required.",
       });
     }
   )
