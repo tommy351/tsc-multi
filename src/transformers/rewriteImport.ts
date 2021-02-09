@@ -1,4 +1,4 @@
-import { extname, posix } from "path";
+import { extname, resolve, dirname } from "path";
 import ts from "typescript";
 
 function isRelativePath(path: string): boolean {
@@ -15,7 +15,7 @@ export function createRewriteImportTransformer(
 ): ts.TransformerFactory<ts.SourceFile> {
   function isDirectory(sourceFile: ts.SourceFile, path: string): boolean {
     const sourcePath = sourceFile.fileName;
-    const fullPath = posix.resolve(posix.dirname(sourcePath), path);
+    const fullPath = resolve(dirname(sourcePath), path);
 
     return options.system.directoryExists(fullPath);
   }
