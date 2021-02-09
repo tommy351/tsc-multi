@@ -1,3 +1,3 @@
+import print from "./print.js";
 var keysOfProps = ["id", "name", "age"];
-console.log(keysOfProps);
-export {};
+print(keysOfProps);

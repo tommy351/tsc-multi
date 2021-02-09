@@ -1,4 +1,5 @@
 import { keys } from "ts-transformer-keys";
+import print from "./print";
 
 interface Props {
   id: string;
@@ -7,4 +8,4 @@ interface Props {
 }
 const keysOfProps = keys<Props>();
 
-console.log(keysOfProps);
+print(keysOfProps);
