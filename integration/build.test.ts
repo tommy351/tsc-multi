@@ -1,17 +1,26 @@
 import execa from "execa";
 import { join } from "path";
 import tmp from "tmp-promise";
-import { copy, writeJSON, readFile } from "fs-extra";
+import { copy, writeJSON, readFile, mkdirp } from "fs-extra";
 import { Config } from "../src";
 import { toMatchFile } from "jest-file-snapshot";
 import glob from "fast-glob";
 
 expect.extend({ toMatchFile });
 
+const TMP_DIR = join(__dirname, ".tmp");
+
 let tmpDir: tmp.DirectoryResult;
 
+beforeAll(async () => {
+  await mkdirp(TMP_DIR);
+});
+
 beforeEach(async () => {
-  tmpDir = await tmp.dir({ unsafeCleanup: true });
+  tmpDir = await tmp.dir({
+    unsafeCleanup: true,
+    tmpdir: TMP_DIR,
+  });
 });
 
 afterEach(async () => {
@@ -312,5 +321,34 @@ describe("nested folders", () => {
     await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
     const result = await execa.node(join(tmpDir.path, "dist/index.js"));
     expect(result.stdout).toEqual("Hello TypeScript");
+  });
+});
+
+describe("custom compiler", () => {
+  beforeEach(async () => {
+    await copyInputFixture("custom-compiler");
+  });
+
+  test("set in CLI", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+    });
+
+    const { exitCode } = await runCLI([".", "--compiler", "ttypescript"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("custom-compiler");
+  });
+
+  test("set in config file", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+      compiler: "ttypescript",
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("custom-compiler");
   });
 });

@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "plugins": [{ "transform": "ts-transformer-keys/transformer" }]
+  }
+}

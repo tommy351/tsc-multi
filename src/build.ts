@@ -26,6 +26,7 @@ export async function build({
   clean,
   projects,
   cwd,
+  compiler,
 }: BuildOptions): Promise<number> {
   if (!projects.length) {
     throw new Error("At least one project is required");
@@ -43,6 +44,8 @@ export async function build({
         watch,
         clean,
         projects,
+        compiler,
+        cwd,
       };
 
       const worker = fork(WORKER_PATH, [], {

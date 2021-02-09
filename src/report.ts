@@ -1,37 +1,51 @@
-import ts from "typescript";
+import type ts from "typescript";
 
-export const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
-  getCurrentDirectory: process.cwd,
-  getCanonicalFileName: (fileName) => fileName,
-  getNewLine: () => ts.sys.newLine,
-};
-
-export function reportDiagnostic(diagnostic: ts.Diagnostic): void {
-  const output = ts.formatDiagnosticsWithColorAndContext(
-    [diagnostic],
-    formatDiagnosticsHost
-  );
-  process.stderr.write(output);
+export interface Reporter {
+  formatDiagnosticsHost: ts.FormatDiagnosticsHost;
+  reportDiagnostic: ts.DiagnosticReporter;
+  reportSolutionBuilderStatus: ts.DiagnosticReporter;
+  reportErrorSummary: ts.ReportEmitErrorSummary;
+  reportWatchStatus: ts.WatchStatusReporter;
 }
 
-export function reportSolutionBuilderStatus(diagnostic: ts.Diagnostic): void {
-  reportDiagnostic(diagnostic);
-}
+export default function createReporter(
+  cwd: string,
+  { sys, formatDiagnosticsWithColorAndContext }: typeof ts
+): Reporter {
+  const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
+    getCurrentDirectory: () => cwd,
+    getCanonicalFileName: (fileName) => fileName,
+    getNewLine: () => sys.newLine,
+  };
 
-export function reportErrorSummary(errorCount: number): void {
-  process.stderr.write(
-    `Found ${errorCount} ${errorCount === 1 ? "error" : "errors"}.\n`
-  );
-}
+  function reportDiagnostic(diagnostic: ts.Diagnostic): void {
+    const output = formatDiagnosticsWithColorAndContext(
+      [diagnostic],
+      formatDiagnosticsHost
+    );
+    process.stderr.write(output);
+  }
 
-export function reportWatchStatus(
-  diagnostic: ts.Diagnostic,
-  newLine: string
-): void {
-  const output = ts.formatDiagnosticsWithColorAndContext([diagnostic], {
-    ...formatDiagnosticsHost,
-    getNewLine: () => newLine,
-  });
+  function reportErrorSummary(errorCount: number): void {
+    process.stderr.write(
+      `Found ${errorCount} ${errorCount === 1 ? "error" : "errors"}.\n`
+    );
+  }
 
-  process.stderr.write(output);
+  function reportWatchStatus(diagnostic: ts.Diagnostic, newLine: string) {
+    const output = formatDiagnosticsWithColorAndContext([diagnostic], {
+      ...formatDiagnosticsHost,
+      getNewLine: () => newLine,
+    });
+
+    process.stderr.write(output);
+  }
+
+  return {
+    formatDiagnosticsHost,
+    reportDiagnostic,
+    reportSolutionBuilderStatus: reportDiagnostic,
+    reportErrorSummary,
+    reportWatchStatus,
+  };
 }

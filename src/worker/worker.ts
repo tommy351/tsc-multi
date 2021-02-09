@@ -1,11 +1,6 @@
-import ts from "typescript";
+import type ts from "typescript";
 import debug from "./debug";
-import {
-  reportDiagnostic,
-  reportErrorSummary,
-  reportSolutionBuilderStatus,
-  reportWatchStatus,
-} from "../report";
+import createReporter, { Reporter } from "../report";
 import omit from "lodash.omit";
 import { mergeCustomTransformers, trimSuffix } from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
@@ -15,11 +10,23 @@ const JS_EXT = ".js";
 const MAP_EXT = ".map";
 const JS_MAP_EXT = `${JS_EXT}${MAP_EXT}`;
 
+type TS = typeof ts;
+
+function loadCompiler(cwd: string, name = "typescript"): TS {
+  const path = require.resolve(name, { paths: [cwd, __dirname] });
+  return require(path);
+}
+
 export class Worker {
-  constructor(
-    private readonly data: WorkerOptions,
-    private readonly system: ts.System = ts.sys
-  ) {}
+  private readonly ts: TS;
+  private readonly system: ts.System;
+  private readonly reporter: Reporter;
+
+  constructor(private readonly data: WorkerOptions, system?: ts.System) {
+    this.ts = loadCompiler(data.cwd, data.compiler);
+    this.system = system || this.ts.sys;
+    this.reporter = createReporter(data.cwd, this.ts);
+  }
 
   public run(): number {
     const builder = this.createBuilder();
@@ -74,34 +81,38 @@ export class Worker {
     const buildOptions: ts.BuildOptions = {
       verbose: this.data.verbose,
     };
-    const createProgram = ts.createSemanticDiagnosticsBuilderProgram;
+    const createProgram = this.ts.createSemanticDiagnosticsBuilderProgram;
 
     if (this.data.watch) {
-      const host = ts.createSolutionBuilderWithWatchHost(
+      const host = this.ts.createSolutionBuilderWithWatchHost(
         this.system,
         createProgram,
-        reportDiagnostic,
-        reportSolutionBuilderStatus,
-        reportWatchStatus
+        this.reporter.reportDiagnostic,
+        this.reporter.reportSolutionBuilderStatus,
+        this.reporter.reportWatchStatus
       );
       this.patchSolutionBuilderHost(host);
 
-      return ts.createSolutionBuilderWithWatch(
+      return this.ts.createSolutionBuilderWithWatch(
         host,
         this.data.projects,
         buildOptions
       );
     }
-    const host = ts.createSolutionBuilderHost(
+    const host = this.ts.createSolutionBuilderHost(
       this.system,
       createProgram,
-      reportDiagnostic,
-      reportSolutionBuilderStatus,
-      reportErrorSummary
+      this.reporter.reportDiagnostic,
+      this.reporter.reportSolutionBuilderStatus,
+      this.reporter.reportErrorSummary
     );
     this.patchSolutionBuilderHost(host);
 
-    return ts.createSolutionBuilder(host, this.data.projects, buildOptions);
+    return this.ts.createSolutionBuilder(
+      host,
+      this.data.projects,
+      buildOptions
+    );
   }
 
   private patchSolutionBuilderHost<T extends ts.BuilderProgram>(
@@ -133,12 +144,12 @@ export class Worker {
     };
 
     host.getParsedCommandLine = (path: string) => {
-      const { options } = ts.convertCompilerOptionsFromJson(
+      const { options } = this.ts.convertCompilerOptionsFromJson(
         omit(this.data.target, ["extname"]),
         path
       );
 
-      const config = ts.getParsedCommandLineOfConfigFile(
+      const config = this.ts.getParsedCommandLineOfConfigFile(
         path,
         options,
         parseConfigFileHost

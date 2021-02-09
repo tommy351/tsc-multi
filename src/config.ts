@@ -16,9 +16,12 @@ export type Target = Infer<typeof targetSchema>;
 const configSchema = object({
   projects: optional(array(string())),
   targets: optional(array(targetSchema)),
+  compiler: optional(string()),
 });
 
-export type Config = {
+export type InferConfig = Infer<typeof configSchema>;
+
+export type Config = InferConfig & {
   cwd: string;
   projects: string[];
   targets: Target[];
@@ -48,6 +51,7 @@ export async function loadConfig({
   const config = result[1];
 
   return {
+    ...config,
     cwd,
     projects: (config.projects || []).map((path) => resolve(configDir, path)),
     targets: config.targets || [],

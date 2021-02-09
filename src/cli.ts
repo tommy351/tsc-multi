@@ -26,6 +26,10 @@ const args = yargs(process.argv.slice(2))
       type: "string",
       description: "Path of the config file. Default to $CWD/tsc-multi.json.",
     },
+    compiler: {
+      type: "string",
+      description: "Set a custom TypeScript compiler.",
+    },
   })
   .command(
     "$0 [projects..]",
@@ -49,6 +53,10 @@ const args = yargs(process.argv.slice(2))
 
   if (projects.length) {
     config.projects = projects.map((path) => resolve(config.cwd, path));
+  }
+
+  if (args.compiler) {
+    config.compiler = args.compiler;
   }
 
   const code = await build({

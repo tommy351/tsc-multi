@@ -6,4 +6,6 @@ export interface WorkerOptions {
   watch?: boolean;
   clean?: boolean;
   projects: string[];
+  cwd: string;
+  compiler?: string;
 }
