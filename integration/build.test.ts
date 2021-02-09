@@ -95,7 +95,7 @@ describe("single project", () => {
       targets: [{ module: "commonjs" }],
     });
 
-    const { exitCode } = await runCLI(["."]);
+    const { exitCode } = await runCLI();
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("single-project/only-commonjs");
@@ -110,7 +110,7 @@ describe("single project", () => {
       targets: [{ module: "esnext" }],
     });
 
-    const { exitCode } = await runCLI(["."]);
+    const { exitCode } = await runCLI();
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("single-project/only-esnext");
@@ -128,7 +128,7 @@ describe("single project", () => {
       ],
     });
 
-    const { exitCode } = await runCLI(["."]);
+    const { exitCode } = await runCLI();
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("single-project/multiple-targets");
@@ -139,7 +139,7 @@ describe("single project", () => {
       targets: [{ module: "esnext" }],
     });
 
-    const { exitCode } = await runCLI([".", "--config", "foo.json"]);
+    const { exitCode } = await runCLI(["--config", "foo.json"]);
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("single-project/only-esnext");
@@ -151,7 +151,6 @@ describe("single project", () => {
     });
 
     const { exitCode } = await runCLI([
-      ".",
       "--config",
       join(tmpDir.path, "foo.json"),
     ]);
@@ -161,23 +160,16 @@ describe("single project", () => {
   });
 
   test("without config file", async () => {
-    await expect(runCLI(["."])).rejects.toThrow();
+    await expect(runCLI()).rejects.toThrow();
   });
 
   test("config path is set but not exists", async () => {
-    await expect(runCLI([".", "--config", "foo.json"])).rejects.toThrow();
+    await expect(runCLI(["--config", "foo.json"])).rejects.toThrow();
   });
 
   test("targets is empty", async () => {
     await writeConfig({ targets: [] });
-    await expect(runCLI(["."])).rejects.toThrow();
-  });
-
-  test("projects is empty", async () => {
-    await writeConfig({
-      targets: [{ module: "esnext" }],
-    });
-    await expect(runCLI([])).rejects.toThrow();
+    await expect(runCLI()).rejects.toThrow();
   });
 
   test("set projects in config file", async () => {
@@ -197,7 +189,7 @@ describe("single project", () => {
       targets: [{ module: "esnext" }],
     });
 
-    const { exitCode } = await runCLI([".", "--cwd", tmpDir.path], {
+    const { exitCode } = await runCLI(["--cwd", tmpDir.path], {
       cwd: __dirname,
     });
     expect(exitCode).toEqual(0);
@@ -295,6 +287,33 @@ describe("project references", () => {
     expect(exitCode).toEqual(0);
 
     expect(await listOutputFiles()).toEqual({});
+  });
+
+  test("use glob in CLI", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+    });
+
+    await runCLI(["*/tsconfig.json"]);
+
+    const { exitCode } = await runCLI(["--clean"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("project-references/only-esnext");
+  });
+
+  test("use glob in config file", async () => {
+    await writeConfig({
+      targets: [{ module: "esnext" }],
+      projects: ["*/tsconfig.json"],
+    });
+
+    await runCLI([]);
+
+    const { exitCode } = await runCLI(["--clean"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("project-references/only-esnext");
   });
 });
 

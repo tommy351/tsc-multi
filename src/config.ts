@@ -2,6 +2,7 @@ import { dirname, resolve } from "path";
 import { object, string, array, Infer, validate, optional } from "superstruct";
 import Debug from "./debug";
 import { tryReadJSON } from "./utils";
+import glob from "fast-glob";
 
 const debug = Debug.extend("config");
 
@@ -27,6 +28,13 @@ export type Config = InferConfig & {
   targets: Target[];
 };
 
+export async function resolveProjectPath(
+  cwd: string,
+  projects: string[]
+): Promise<string[]> {
+  return glob(projects, { cwd, onlyFiles: false });
+}
+
 export interface LoadConfigOptions {
   cwd?: string;
   path?: string;
@@ -47,13 +55,15 @@ export async function loadConfig({
     throw result[0];
   }
 
-  const configDir = dirname(configPath);
   const config = result[1];
 
   return {
     ...config,
     cwd,
-    projects: (config.projects || []).map((path) => resolve(configDir, path)),
+    projects: await resolveProjectPath(
+      dirname(configPath),
+      config.projects || []
+    ),
     targets: config.targets || [],
   };
 }

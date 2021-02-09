@@ -1,7 +1,6 @@
-import { resolve } from "path";
 import yargs from "yargs/yargs";
 import { build } from "./build";
-import { loadConfig } from "./config";
+import { loadConfig, resolveProjectPath } from "./config";
 
 const args = yargs(process.argv.slice(2))
   .options({
@@ -33,13 +32,21 @@ const args = yargs(process.argv.slice(2))
   })
   .command(
     "$0 [projects..]",
-    "Build one or more TypeScript projects to multiple targets.",
+    "Build multiple TypeScript projects to multiple targets.",
     (cmd) => {
-      return cmd.positional("projects", {
-        type: "string",
-        description:
-          "Path of TypeScript projects or tsconfig.json files. At least one project is required.",
-      });
+      return cmd
+        .positional("projects", {
+          type: "string",
+          description:
+            "Path of TypeScript projects or tsconfig.json files. Default to $CWD.",
+        })
+        .example([
+          ["$0", "Build current folder."],
+          ["$0 --watch", "Watch files and rebuild when changed."],
+          ["$0 --clean", "Delete built files."],
+          ["$0 --config ./conf.json", "Custom config path."],
+          ["$0 ./pkg-a ./pkg-b", "Build multiple projects."],
+        ]);
     }
   )
   .showHelpOnFail(false).argv;
@@ -52,7 +59,11 @@ const args = yargs(process.argv.slice(2))
   });
 
   if (projects.length) {
-    config.projects = projects.map((path) => resolve(config.cwd, path));
+    config.projects = await resolveProjectPath(config.cwd, projects);
+  }
+
+  if (!config.projects.length) {
+    config.projects = [config.cwd];
   }
 
   if (args.compiler) {
