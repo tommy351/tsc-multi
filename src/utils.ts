@@ -1,5 +1,8 @@
 import fs from "fs";
 import ts from "typescript";
+import { promisify } from "util";
+
+const readFile = promisify(fs.readFile);
 
 export function trimSuffix(input: string, suffix: string): string {
   if (input.endsWith(suffix)) {
@@ -11,7 +14,7 @@ export function trimSuffix(input: string, suffix: string): string {
 
 export async function tryReadJSON(path: string): Promise<any> {
   try {
-    const content = await fs.promises.readFile(path, "utf8");
+    const content = await readFile(path, "utf8");
     return JSON.parse(content);
   } catch (err) {
     if (err.code === "ENOENT") return {};

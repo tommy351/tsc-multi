@@ -1,7 +1,7 @@
 {
   "name": "tsc-multi",
   "version": "0.1.0",
-  "description": "Compile TypeScript projects into multiple targets.",
+  "description": "Compile multiple TypeScript projects into multiple targets.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -21,7 +21,9 @@
   },
   "keywords": [
     "typescript",
-    "tsc"
+    "tsc",
+    "ts",
+    "compiler"
   ],
   "files": [
     "bin",
@@ -42,7 +44,7 @@
     "*.{js,ts,jsx,tsx}": "eslint --fix"
   },
   "engines": {
-    "node": ">=12.11.0"
+    "node": ">=10"
   },
   "dependencies": {
     "debug": "^4.3.1",
