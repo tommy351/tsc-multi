@@ -9,6 +9,7 @@ import glob from "fast-glob";
 expect.extend({ toMatchFile });
 
 const TMP_DIR = join(__dirname, ".tmp");
+const ESM_SUPPORTED = +process.versions.node.split(".")[0] >= 12;
 
 let tmpDir: tmp.DirectoryResult;
 
@@ -72,6 +73,18 @@ async function matchOutputFiles(name: string) {
   }
 }
 
+function runCJSModule(path: string) {
+  return execa.node(join(tmpDir.path, path));
+}
+
+async function runESMModule(path: string) {
+  await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
+
+  return execa.node(join(tmpDir.path, path), [], {
+    ...(!ESM_SUPPORTED && { nodeOptions: ["-r", "esm"] }),
+  });
+}
+
 describe("single project", () => {
   beforeEach(async () => {
     await copyInputFixture("single-project");
@@ -88,7 +101,7 @@ describe("single project", () => {
     await matchOutputFiles("single-project/only-commonjs");
 
     // Check if the output files are executable
-    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    const result = await runCJSModule("dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
@@ -103,8 +116,7 @@ describe("single project", () => {
     await matchOutputFiles("single-project/only-esnext");
 
     // Check if the output files are executable
-    await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
-    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    const result = await runESMModule("dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
@@ -235,7 +247,7 @@ describe("project references", () => {
     await matchOutputFiles("project-references/only-commonjs");
 
     // Check if the output files are executable
-    const result = await execa.node(join(tmpDir.path, "main/dist/index.js"));
+    const result = await runCJSModule("main/dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
@@ -250,8 +262,7 @@ describe("project references", () => {
     await matchOutputFiles("project-references/only-esnext");
 
     // Check if the output files are executable
-    await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
-    const result = await execa.node(join(tmpDir.path, "main/dist/index.js"));
+    const result = await runESMModule("main/dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
@@ -303,7 +314,7 @@ describe("nested folders", () => {
     await matchOutputFiles("nested-folders/only-commonjs");
 
     // Check if the output files are executable
-    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    const result = await runCJSModule("dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
@@ -318,8 +329,7 @@ describe("nested folders", () => {
     await matchOutputFiles("nested-folders/only-esnext");
 
     // Check if the output files are executable
-    await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
-    const result = await execa.node(join(tmpDir.path, "dist/index.js"));
+    const result = await runESMModule("dist/index.js");
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 });
