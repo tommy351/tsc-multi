@@ -244,7 +244,7 @@ describe("project references", () => {
       targets: [{ module: "esnext" }],
     });
 
-    const { exitCode } = await runCLI(["main", "print"]);
+    const { exitCode } = await runCLI(["main", "print"], { stdio: "inherit" });
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("project-references/only-esnext");
