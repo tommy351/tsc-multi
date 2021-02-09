@@ -1,3 +1,4 @@
+import { resolve } from "path";
 import yargs from "yargs/yargs";
 import { build } from "./build";
 import { loadConfig } from "./config";
@@ -44,13 +45,15 @@ const args = yargs(process.argv.slice(2))
   const config = await loadConfig({
     cwd: args.cwd,
     path: args.config,
-    extras: {
-      ...(projects.length && { projects }),
-    },
   });
+
+  if (projects.length) {
+    config.projects = projects.map((path) => resolve(config.cwd, path));
+  }
+
   const code = await build({
     ...config,
-    ...(args.verbose != null && { verbose: args.verbose }),
+    verbose: args.verbose,
     watch: args.watch,
     clean: args.clean,
   });

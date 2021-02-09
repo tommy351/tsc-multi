@@ -12,6 +12,7 @@ type Stdio = "ignore" | "inherit" | Stream;
 export interface BuildOptions extends Config {
   watch?: boolean;
   clean?: boolean;
+  verbose?: boolean;
   stdout?: Stdio;
   stderr?: Stdio;
 }
@@ -26,6 +27,14 @@ export async function build({
   projects,
   cwd,
 }: BuildOptions): Promise<number> {
+  if (!projects.length) {
+    throw new Error("At least one project is required");
+  }
+
+  if (!targets.length) {
+    throw new Error("At least one target is required");
+  }
+
   function runWorker(target: Target): Promise<number> {
     return new Promise<number>((resolve, reject) => {
       const data: WorkerOptions = {
