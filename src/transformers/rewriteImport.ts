@@ -1,4 +1,4 @@
-import { extname, resolve, dirname } from "path";
+import { resolve, dirname } from "path";
 import ts from "typescript";
 
 function isRelativePath(path: string): boolean {
@@ -26,7 +26,7 @@ export function createRewriteImportTransformer(
   ): ts.Expression {
     if (!ts.isStringLiteral(node)) return node;
 
-    if (isRelativePath(node.text) && !extname(node.text)) {
+    if (isRelativePath(node.text) && node.text.endsWith(".js")) {
       if (isDirectory(sourceFile, node.text)) {
         return ts.factory.createStringLiteral(
           `${node.text}/index${options.extname}`
