@@ -322,34 +322,28 @@ describe("nested folders", () => {
     await copyInputFixture("nested-folders");
   });
 
-  test("only commonjs", async () => {
+  test("multiple targets", async () => {
     await writeConfig({
-      targets: [{ module: "commonjs" }],
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
     });
 
     const { exitCode } = await runCLI(["."]);
     expect(exitCode).toEqual(0);
 
-    await matchOutputFiles("nested-folders/only-commonjs");
+    await matchOutputFiles("nested-folders");
+
+    const expectedOutput = "Hello TypeScript";
 
     // Check if the output files are executable
-    const result = await runCJSModule("dist/index.js");
-    expect(result.stdout).toEqual("Hello TypeScript");
-  });
-
-  test("only esnext", async () => {
-    await writeConfig({
-      targets: [{ module: "esnext" }],
-    });
-
-    const { exitCode } = await runCLI(["."]);
-    expect(exitCode).toEqual(0);
-
-    await matchOutputFiles("nested-folders/only-esnext");
+    let result = await runCJSModule("dist/index.cjs");
+    expect(result.stdout).toEqual(expectedOutput);
 
     // Check if the output files are executable
-    const result = await runESMModule("dist/index.js");
-    expect(result.stdout).toEqual("Hello TypeScript");
+    result = await runESMModule("dist/index.mjs");
+    expect(result.stdout).toEqual(expectedOutput);
   });
 });
 
@@ -360,7 +354,10 @@ describe("custom compiler", () => {
 
   test("set in CLI", async () => {
     await writeConfig({
-      targets: [{ module: "esnext" }],
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
     });
 
     const { exitCode } = await runCLI([".", "--compiler", "ttypescript"]);
@@ -371,7 +368,10 @@ describe("custom compiler", () => {
 
   test("set in config file", async () => {
     await writeConfig({
-      targets: [{ module: "esnext" }],
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
       compiler: "ttypescript",
     });
 
@@ -379,5 +379,65 @@ describe("custom compiler", () => {
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("custom-compiler");
+  });
+});
+
+describe("import path includes dot", () => {
+  beforeEach(async () => {
+    await copyInputFixture("dot-import");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("dot-import");
+
+    const expectedOutput = "dot.file.dot.folder";
+
+    // Check if the output files are executable
+    let result = await runCJSModule("dist/index.cjs");
+    expect(result.stdout).toEqual(expectedOutput);
+
+    // Check if the output files are executable
+    result = await runESMModule("dist/index.mjs");
+    expect(result.stdout).toEqual(expectedOutput);
+  });
+});
+
+describe("import path ends with .js", () => {
+  beforeEach(async () => {
+    await copyInputFixture("js-ext-import");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("js-ext-import");
+
+    const expectedOutput = "Hello world";
+
+    // Check if the output files are executable
+    let result = await runCJSModule("dist/index.cjs");
+    expect(result.stdout).toEqual(expectedOutput);
+
+    // Check if the output files are executable
+    result = await runESMModule("dist/index.mjs");
+    expect(result.stdout).toEqual(expectedOutput);
   });
 });

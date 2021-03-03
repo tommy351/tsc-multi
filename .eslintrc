@@ -45,6 +45,12 @@
         "@typescript-eslint/no-var-requires": "off",
         "@typescript-eslint/explicit-function-return-type": "off"
       }
+    },
+    {
+      "files": ["*.{ts,tsx}"],
+      "rules": {
+        "node/no-missing-import": "off"
+      }
     }
   ]
 }

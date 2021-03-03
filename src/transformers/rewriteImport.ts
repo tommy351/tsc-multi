@@ -1,5 +1,8 @@
-import { resolve, dirname } from "path";
+import { resolve, dirname, extname } from "path";
 import ts from "typescript";
+import { trimSuffix } from "../utils";
+
+const JS_EXT = ".js";
 
 function isRelativePath(path: string): boolean {
   return path.startsWith("./") || path.startsWith("../");
@@ -24,19 +27,18 @@ export function createRewriteImportTransformer(
     sourceFile: ts.SourceFile,
     node: ts.Expression
   ): ts.Expression {
-    if (!ts.isStringLiteral(node)) return node;
+    if (!ts.isStringLiteral(node) || !isRelativePath(node.text)) return node;
 
-    if (isRelativePath(node.text) && node.text.endsWith(".js")) {
-      if (isDirectory(sourceFile, node.text)) {
-        return ts.factory.createStringLiteral(
-          `${node.text}/index${options.extname}`
-        );
-      }
-
-      return ts.factory.createStringLiteral(`${node.text}${options.extname}`);
+    if (isDirectory(sourceFile, node.text)) {
+      return ts.factory.createStringLiteral(
+        `${node.text}/index${options.extname}`
+      );
     }
 
-    return node;
+    const ext = extname(node.text);
+    const base = ext === JS_EXT ? trimSuffix(node.text, JS_EXT) : node.text;
+
+    return ts.factory.createStringLiteral(`${base}${options.extname}`);
   }
 
   return (ctx) => {
