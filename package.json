@@ -1,6 +1,6 @@
 {
   "name": "tsc-multi",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Compile multiple TypeScript projects into multiple targets.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
