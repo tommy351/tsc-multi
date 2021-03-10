@@ -12,10 +12,14 @@ export function trimSuffix(input: string, suffix: string): string {
   return input;
 }
 
+export async function readJSON(path: string): Promise<any> {
+  const content = await readFile(path, "utf8");
+  return JSON.parse(content);
+}
+
 export async function tryReadJSON(path: string): Promise<any> {
   try {
-    const content = await readFile(path, "utf8");
-    return JSON.parse(content);
+    return await readJSON(path);
   } catch (err) {
     if (err.code === "ENOENT") return {};
     throw err;

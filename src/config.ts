@@ -1,7 +1,7 @@
 import { dirname, resolve } from "path";
 import { object, string, array, Infer, validate, optional } from "superstruct";
 import Debug from "./debug";
-import { tryReadJSON } from "./utils";
+import { readJSON, tryReadJSON } from "./utils";
 import glob from "fast-glob";
 
 const debug = Debug.extend("config");
@@ -25,7 +25,7 @@ export type InferConfig = Infer<typeof configSchema>;
 export type Config = InferConfig & {
   cwd: string;
   projects: string[];
-  targets: Target[];
+  targets?: Target[];
 };
 
 export async function resolveProjectPath(
@@ -42,13 +42,18 @@ export interface LoadConfigOptions {
 
 export async function loadConfig({
   cwd = process.cwd(),
-  path = "tsc-multi.json",
+  path,
 }: LoadConfigOptions): Promise<Config> {
-  const configPath = resolve(cwd, path);
+  const mustLoadConfig = !!path;
+  const configPath = resolve(cwd, path || "tsc-multi.json");
 
   debug("Read config from %s", configPath);
 
-  const json = await tryReadJSON(configPath);
+  const json = await (() => {
+    if (mustLoadConfig) return readJSON(configPath);
+    return tryReadJSON(configPath);
+  })();
+
   const result = validate(json, configSchema);
 
   if (result[0]) {
@@ -64,6 +69,5 @@ export async function loadConfig({
       dirname(configPath),
       config.projects || []
     ),
-    targets: config.targets || [],
   };
 }

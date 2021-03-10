@@ -160,16 +160,29 @@ describe("single project", () => {
   });
 
   test("without config file", async () => {
-    await expect(runCLI()).rejects.toThrow();
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+    await matchOutputFiles("single-project/only-commonjs");
   });
 
   test("config path is set but not exists", async () => {
     await expect(runCLI(["--config", "foo.json"])).rejects.toThrow();
   });
 
+  test("targets is undefined", async () => {
+    await writeConfig({});
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+    await matchOutputFiles("single-project/only-commonjs");
+  });
+
   test("targets is empty", async () => {
     await writeConfig({ targets: [] });
-    await expect(runCLI()).rejects.toThrow();
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+    await matchOutputFiles("single-project/only-commonjs");
   });
 
   test("set projects in config file", async () => {

@@ -18,7 +18,7 @@ export interface BuildOptions extends Config {
 }
 
 export async function build({
-  targets,
+  targets: inputTargets,
   stdout = "inherit",
   stderr = "inherit",
   verbose,
@@ -32,9 +32,7 @@ export async function build({
     throw new Error("At least one project is required");
   }
 
-  if (!targets.length) {
-    throw new Error("At least one target is required");
-  }
+  const targets = inputTargets && inputTargets.length ? inputTargets : [{}];
 
   function runWorker(target: Target): Promise<number> {
     return new Promise<number>((resolve, reject) => {
