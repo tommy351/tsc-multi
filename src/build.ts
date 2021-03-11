@@ -7,6 +7,8 @@ import { Stream } from "stream";
 import { trimPrefix } from "./utils";
 import chalk from "chalk";
 import { getReportStyles } from "./report";
+import onExit from "signal-exit";
+import debug from "./debug";
 
 const WORKER_PATH = join(__dirname, "worker/entry.js");
 
@@ -38,35 +40,49 @@ export async function build({
   const targets = inputTargets && inputTargets.length ? inputTargets : [{}];
   const reportStyles = getReportStyles();
 
-  function runWorker(
+  async function runWorker(
     target: Target,
     prefixStyle: chalk.Chalk
   ): Promise<number> {
-    return new Promise<number>((resolve, reject) => {
-      const prefix = `[${trimPrefix(target.extname || ".js", ".")}]: `;
-      const data: WorkerOptions = {
-        target,
-        verbose,
-        watch,
-        clean,
-        projects,
-        compiler,
-        cwd,
-        reportPrefix: prefixStyle(prefix),
-      };
+    const prefix = `[${trimPrefix(target.extname || ".js", ".")}]: `;
+    const data: WorkerOptions = {
+      target,
+      verbose,
+      watch,
+      clean,
+      projects,
+      compiler,
+      cwd,
+      reportPrefix: prefixStyle(prefix),
+    };
 
-      const worker = fork(WORKER_PATH, [], {
-        cwd,
-        stdio: ["pipe", stdout, stderr, "ipc"],
-      });
-
-      if (worker.stdin) {
-        stringToStream(JSON.stringify(data)).pipe(worker.stdin);
-      }
-
-      worker.on("error", reject);
-      worker.on("exit", resolve);
+    const worker = fork(WORKER_PATH, [], {
+      cwd,
+      stdio: ["pipe", stdout, stderr, "ipc"],
     });
+
+    if (worker.stdin) {
+      stringToStream(JSON.stringify(data)).pipe(worker.stdin);
+    }
+
+    const removeExitHandler = onExit((code, signal) => {
+      debug(
+        "Killing worker %d because parent process received %s",
+        worker.pid,
+        signal
+      );
+
+      worker.kill();
+    });
+
+    try {
+      return await new Promise<number>((resolve, reject) => {
+        worker.on("error", reject);
+        worker.on("exit", resolve);
+      });
+    } finally {
+      removeExitHandler();
+    }
   }
 
   const codes = await Promise.all(
