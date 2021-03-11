@@ -1,18 +1,24 @@
 import { dirname, resolve } from "path";
-import { object, string, array, Infer, validate, optional } from "superstruct";
+import {
+  object,
+  string,
+  array,
+  Infer,
+  validate,
+  optional,
+  type,
+} from "superstruct";
 import Debug from "./debug";
 import { readJSON, tryReadJSON } from "./utils";
 import glob from "fast-glob";
 
 const debug = Debug.extend("config");
 
-const targetSchema = object({
+const targetSchema = type({
   extname: optional(string()),
-  module: optional(string()),
-  target: optional(string()),
 });
 
-export type Target = Infer<typeof targetSchema>;
+export type Target = Infer<typeof targetSchema> & { [key: string]: unknown };
 
 const configSchema = object({
   projects: optional(array(string())),

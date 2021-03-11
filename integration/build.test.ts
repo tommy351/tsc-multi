@@ -454,3 +454,20 @@ describe("import path ends with .js", () => {
     expect(result.stdout).toEqual(expectedOutput);
   });
 });
+
+describe("extra options in target", () => {
+  beforeEach(async () => {
+    await copyInputFixture("remove-comments");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [{ removeComments: true }],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("remove-comments");
+  });
+});
