@@ -4,6 +4,9 @@ import { Config, Target } from "./config";
 import { WorkerOptions } from "./worker/types";
 import stringToStream from "string-to-stream";
 import { Stream } from "stream";
+import { trimPrefix } from "./utils";
+import chalk from "chalk";
+import { getReportStyles } from "./report";
 
 const WORKER_PATH = join(__dirname, "worker/entry.js");
 
@@ -33,9 +36,14 @@ export async function build({
   }
 
   const targets = inputTargets && inputTargets.length ? inputTargets : [{}];
+  const reportStyles = getReportStyles();
 
-  function runWorker(target: Target): Promise<number> {
+  function runWorker(
+    target: Target,
+    prefixStyle: chalk.Chalk
+  ): Promise<number> {
     return new Promise<number>((resolve, reject) => {
+      const prefix = `[${trimPrefix(target.extname || ".js", ".")}]: `;
       const data: WorkerOptions = {
         target,
         verbose,
@@ -44,6 +52,7 @@ export async function build({
         projects,
         compiler,
         cwd,
+        reportPrefix: prefixStyle(prefix),
       };
 
       const worker = fork(WORKER_PATH, [], {
@@ -60,7 +69,11 @@ export async function build({
     });
   }
 
-  const codes = await Promise.all(targets.map((target) => runWorker(target)));
+  const codes = await Promise.all(
+    targets.map((target, i) =>
+      runWorker(target, reportStyles[i % reportStyles.length])
+    )
+  );
 
   return codes.find((code) => code !== 0) || 0;
 }

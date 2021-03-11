@@ -8,4 +8,5 @@ export interface WorkerOptions {
   projects: string[];
   cwd: string;
   compiler?: string;
+  reportPrefix?: string;
 }

@@ -1,3 +1,5 @@
+import chalk from "chalk";
+import { Writable } from "stream";
 import type ts from "typescript";
 
 export interface Reporter {
@@ -8,37 +10,49 @@ export interface Reporter {
   reportWatchStatus: ts.WatchStatusReporter;
 }
 
-export default function createReporter(
-  cwd: string,
-  { sys, formatDiagnosticsWithColorAndContext }: typeof ts
-): Reporter {
+export interface ReporterOptions {
+  cwd: string;
+  system: ts.System;
+  formatDiagnostics: typeof ts["formatDiagnostics"];
+  output: Writable;
+  prefix?: string;
+}
+
+export function createReporter({
+  cwd,
+  system,
+  formatDiagnostics,
+  output,
+  prefix = "",
+}: ReporterOptions): Reporter {
   const formatDiagnosticsHost: ts.FormatDiagnosticsHost = {
     getCurrentDirectory: () => cwd,
     getCanonicalFileName: (fileName) => fileName,
-    getNewLine: () => sys.newLine,
+    getNewLine: () => system.newLine,
   };
 
+  function writeString(content: string) {
+    output.write(prefix + content);
+  }
+
   function reportDiagnostic(diagnostic: ts.Diagnostic): void {
-    const output = formatDiagnosticsWithColorAndContext(
-      [diagnostic],
-      formatDiagnosticsHost
-    );
-    process.stderr.write(output);
+    const formatted = formatDiagnostics([diagnostic], formatDiagnosticsHost);
+    writeString(formatted);
   }
 
   function reportErrorSummary(errorCount: number): void {
-    process.stderr.write(
+    writeString(
       `Found ${errorCount} ${errorCount === 1 ? "error" : "errors"}.\n`
     );
   }
 
   function reportWatchStatus(diagnostic: ts.Diagnostic, newLine: string) {
-    const output = formatDiagnosticsWithColorAndContext([diagnostic], {
+    const formatted = formatDiagnostics([diagnostic], {
       ...formatDiagnosticsHost,
       getNewLine: () => newLine,
     });
 
-    process.stderr.write(output);
+    writeString(formatted);
   }
 
   return {
@@ -48,4 +62,15 @@ export default function createReporter(
     reportErrorSummary,
     reportWatchStatus,
   };
+}
+
+export function getReportStyles(): chalk.Chalk[] {
+  return [
+    chalk.red,
+    chalk.green,
+    chalk.yellow,
+    chalk.blue,
+    chalk.magenta,
+    chalk.cyan,
+  ];
 }

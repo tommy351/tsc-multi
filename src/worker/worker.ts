@@ -1,7 +1,7 @@
 import type ts from "typescript";
 import debug from "./debug";
-import createReporter, { Reporter } from "../report";
-import omit from "lodash.omit";
+import { createReporter, Reporter } from "../report";
+import { omit } from "lodash";
 import { mergeCustomTransformers, trimSuffix } from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
 import { WorkerOptions } from "./types";
@@ -25,7 +25,13 @@ export class Worker {
   constructor(private readonly data: WorkerOptions, system?: ts.System) {
     this.ts = loadCompiler(data.cwd, data.compiler);
     this.system = system || this.ts.sys;
-    this.reporter = createReporter(data.cwd, this.ts);
+    this.reporter = createReporter({
+      cwd: data.cwd,
+      system: this.system,
+      formatDiagnostics: this.ts.formatDiagnosticsWithColorAndContext,
+      output: process.stderr,
+      prefix: data.reportPrefix,
+    });
   }
 
   public run(): number {

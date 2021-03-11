@@ -4,6 +4,14 @@ import { promisify } from "util";
 
 const readFile = promisify(fs.readFile);
 
+export function trimPrefix(input: string, prefix: string): string {
+  if (input.startsWith(prefix)) {
+    return input.substring(prefix.length);
+  }
+
+  return input;
+}
+
 export function trimSuffix(input: string, suffix: string): string {
   if (input.endsWith(suffix)) {
     return input.substring(0, input.length - suffix.length);
