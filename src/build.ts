@@ -67,9 +67,9 @@ export async function build({
 
     const removeExitHandler = onExit((code, signal) => {
       debug(
-        "Killing worker %d because parent process received %s",
-        worker.pid,
-        signal
+        `Killing worker ${worker.pid} because parent process received ${
+          signal || code || 0
+        }`
       );
 
       worker.kill();
