@@ -1,10 +1,15 @@
 import type ts from "typescript";
 import debug from "./debug";
 import { createReporter, Reporter } from "../report";
-import { omit } from "lodash";
-import { mergeCustomTransformers, trimSuffix } from "../utils";
+import {
+  mergeCustomTransformers,
+  trimSuffix,
+  isIncrementalCompilation,
+} from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
 import { WorkerOptions } from "./types";
+import { Target } from "../config";
+import { extname } from "path";
 
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
@@ -21,8 +26,17 @@ export class Worker {
   private readonly ts: TS;
   private readonly system: ts.System;
   private readonly reporter: Reporter;
+  private readonly extname?: string;
+  private readonly target: Omit<Target, "extname">;
+  private readonly options: Omit<WorkerOptions, "target">;
 
-  constructor(private readonly data: WorkerOptions, system?: ts.System) {
+  constructor(data: WorkerOptions, system?: ts.System) {
+    const { target, ...options } = data;
+    const { extname, ...targetOptions } = target;
+
+    this.target = targetOptions;
+    this.extname = extname;
+    this.options = options;
     this.ts = loadCompiler(data.cwd, data.compiler);
     this.system = system || this.ts.sys;
     this.reporter = createReporter({
@@ -37,7 +51,7 @@ export class Worker {
   public run(): number {
     const builder = this.createBuilder();
 
-    if (this.data.clean) {
+    if (this.options.clean) {
       return builder.clean();
     }
 
@@ -45,17 +59,15 @@ export class Worker {
   }
 
   private getJSPath(path: string): string {
-    const { extname } = this.data.target;
-    if (!extname) return path;
+    if (!this.extname) return path;
 
-    return trimSuffix(path, JS_EXT) + extname;
+    return trimSuffix(path, JS_EXT) + this.extname;
   }
 
   private getJSMapPath(path: string): string {
-    const { extname } = this.data.target;
-    if (!extname) return path;
+    if (!this.extname) return path;
 
-    return trimSuffix(path, JS_MAP_EXT) + extname + MAP_EXT;
+    return trimSuffix(path, JS_MAP_EXT) + this.extname + MAP_EXT;
   }
 
   private rewritePath(path: string): string {
@@ -85,11 +97,11 @@ export class Worker {
 
   private createBuilder() {
     const buildOptions: ts.BuildOptions = {
-      verbose: this.data.verbose,
+      verbose: this.options.verbose,
     };
     const createProgram = this.ts.createSemanticDiagnosticsBuilderProgram;
 
-    if (this.data.watch) {
+    if (this.options.watch) {
       const host = this.ts.createSolutionBuilderWithWatchHost(
         this.system,
         createProgram,
@@ -101,7 +113,7 @@ export class Worker {
 
       return this.ts.createSolutionBuilderWithWatch(
         host,
-        this.data.projects,
+        this.options.projects,
         buildOptions
       );
     }
@@ -117,7 +129,7 @@ export class Worker {
 
     return this.ts.createSolutionBuilder(
       host,
-      this.data.projects,
+      this.options.projects,
       buildOptions
     );
   }
@@ -137,7 +149,7 @@ export class Worker {
     const transformers: ts.CustomTransformers = {
       after: [
         createRewriteImportTransformer({
-          extname: this.data.target.extname || JS_EXT,
+          extname: this.extname || JS_EXT,
           system: this.system,
         }),
       ],
@@ -151,8 +163,9 @@ export class Worker {
     };
 
     host.getParsedCommandLine = (path: string) => {
+      const basePath = trimSuffix(path, extname(path));
       const { options } = this.ts.convertCompilerOptionsFromJson(
-        omit(this.data.target, ["extname"]),
+        this.target,
         path
       );
 
@@ -161,6 +174,18 @@ export class Worker {
         options,
         parseConfigFileHost
       );
+      if (!config) return;
+
+      // Set separated tsbuildinfo paths to avoid that multiple workers to
+      // access the same tsbuildinfo files and potentially read/write corrupted
+      // tsbuildinfo files
+      if (
+        this.extname &&
+        !config.options.tsBuildInfoFile &&
+        isIncrementalCompilation(config.options)
+      ) {
+        config.options.tsBuildInfoFile = `${basePath}${this.extname}.tsbuildinfo`;
+      }
 
       return config;
     };

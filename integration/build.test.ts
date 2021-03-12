@@ -1,3 +1,4 @@
+/// <reference types="jest-extended"/>
 import execa from "execa";
 import { join } from "path";
 import tmp from "tmp-promise";
@@ -283,6 +284,17 @@ describe("project references", () => {
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("project-references/multiple-targets");
+
+    // Test if tsbuildinfo files are separated between workers
+    const tsBuildInfoFiles = await glob(["**/*.tsbuildinfo"], {
+      cwd: tmpDir.path,
+    });
+    expect(tsBuildInfoFiles).toIncludeSameMembers([
+      "main/tsconfig.cjs.tsbuildinfo",
+      "main/tsconfig.mjs.tsbuildinfo",
+      "print/tsconfig.cjs.tsbuildinfo",
+      "print/tsconfig.mjs.tsbuildinfo",
+    ]);
   });
 
   test("clean files", async () => {
@@ -498,8 +510,6 @@ describe("multi type errors", () => {
   test("should throw error", async () => {
     const { exitCode, stderr } = await runCLI(["."], { reject: false });
     expect(exitCode).not.toEqual(0);
-
-    console.log(stderr);
 
     expect(stderr).toEqual(
       expect.stringContaining(

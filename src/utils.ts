@@ -51,3 +51,7 @@ export function mergeCustomTransformers(
     ),
   };
 }
+
+export function isIncrementalCompilation(options: ts.CompilerOptions): boolean {
+  return !!(options.incremental || options.composite);
+}
