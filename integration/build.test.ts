@@ -235,6 +235,53 @@ describe("single project", () => {
 
     expect(await listOutputFiles()).toEqual({});
   });
+
+  test(`extname must be started with "."`, async () => {
+    await writeConfig({
+      targets: [{ extname: "cjs" }],
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(`targets[0].extname must be started with ".".`)
+    );
+  });
+
+  test("all targets without extname", async () => {
+    await writeConfig({
+      targets: [{ module: "commonjs" }, { module: "esnext" }],
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `targets[1].extname is already used in targets[0].extname`
+      )
+    );
+  });
+
+  test("duplicated extname", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".es2018.js", target: "es2018" },
+        { extname: ".cjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `targets[2].extname is already used in targets[0].extname`
+      )
+    );
+  });
 });
 
 describe("project references", () => {
