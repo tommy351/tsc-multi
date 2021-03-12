@@ -471,3 +471,62 @@ describe("extra options in target", () => {
     await matchOutputFiles("remove-comments");
   });
 });
+
+describe("type error", () => {
+  beforeEach(async () => {
+    await copyInputFixture("type-error");
+  });
+
+  test("should throw error", async () => {
+    const { exitCode, stderr } = await runCLI(["."], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `Type 'number' is not assignable to type 'string'.`
+      )
+    );
+    expect(stderr).toEqual(expect.stringContaining("Found 1 error."));
+  });
+});
+
+describe("multi type errors", () => {
+  beforeEach(async () => {
+    await copyInputFixture("multi-type-errors");
+  });
+
+  test("should throw error", async () => {
+    const { exitCode, stderr } = await runCLI(["."], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    console.log(stderr);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `Type 'number' is not assignable to type 'string'.`
+      )
+    );
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `Property 'push' does not exist on type 'readonly string[]'.`
+      )
+    );
+    expect(stderr).toEqual(expect.stringContaining("Found 2 errors."));
+  });
+});
+
+describe("tsconfig error", () => {
+  beforeEach(async () => {
+    await copyInputFixture("tsconfig-error");
+  });
+
+  test("should throw error", async () => {
+    const { exitCode, stderr } = await runCLI(["."], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(`Argument for '--lib' option must be`)
+    );
+    expect(stderr).toEqual(expect.stringContaining("Found 1 error."));
+  });
+});
