@@ -72,7 +72,7 @@ export async function build({
         }`
       );
 
-      worker.kill();
+      worker.kill(code || "SIGTERM");
     });
 
     try {
