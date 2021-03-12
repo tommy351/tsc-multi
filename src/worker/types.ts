@@ -1,7 +1,8 @@
 import { Target } from "../config";
 
 export interface WorkerOptions {
-  target: Target;
+  target: Omit<Target, "extname">;
+  extname?: string;
   verbose?: boolean;
   watch?: boolean;
   clean?: boolean;

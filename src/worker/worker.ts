@@ -8,8 +8,7 @@ import {
 } from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
 import { WorkerOptions } from "./types";
-import { Target } from "../config";
-import { extname } from "path";
+import { dirname, extname } from "path";
 
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
@@ -26,17 +25,8 @@ export class Worker {
   private readonly ts: TS;
   private readonly system: ts.System;
   private readonly reporter: Reporter;
-  private readonly extname?: string;
-  private readonly target: Omit<Target, "extname">;
-  private readonly options: Omit<WorkerOptions, "target">;
 
-  constructor(data: WorkerOptions, system?: ts.System) {
-    const { target, ...options } = data;
-    const { extname, ...targetOptions } = target;
-
-    this.target = targetOptions;
-    this.extname = extname;
-    this.options = options;
+  constructor(private readonly data: WorkerOptions, system?: ts.System) {
     this.ts = loadCompiler(data.cwd, data.compiler);
     this.system = system || this.ts.sys;
     this.reporter = createReporter({
@@ -51,7 +41,7 @@ export class Worker {
   public run(): number {
     const builder = this.createBuilder();
 
-    if (this.options.clean) {
+    if (this.data.clean) {
       return builder.clean();
     }
 
@@ -59,15 +49,15 @@ export class Worker {
   }
 
   private getJSPath(path: string): string {
-    if (!this.extname) return path;
+    if (!this.data.extname) return path;
 
-    return trimSuffix(path, JS_EXT) + this.extname;
+    return trimSuffix(path, JS_EXT) + this.data.extname;
   }
 
   private getJSMapPath(path: string): string {
-    if (!this.extname) return path;
+    if (!this.data.extname) return path;
 
-    return trimSuffix(path, JS_MAP_EXT) + this.extname + MAP_EXT;
+    return trimSuffix(path, JS_MAP_EXT) + this.data.extname + MAP_EXT;
   }
 
   private rewritePath(path: string): string {
@@ -97,11 +87,11 @@ export class Worker {
 
   private createBuilder() {
     const buildOptions: ts.BuildOptions = {
-      verbose: this.options.verbose,
+      verbose: this.data.verbose,
     };
     const createProgram = this.ts.createSemanticDiagnosticsBuilderProgram;
 
-    if (this.options.watch) {
+    if (this.data.watch) {
       const host = this.ts.createSolutionBuilderWithWatchHost(
         this.system,
         createProgram,
@@ -113,7 +103,7 @@ export class Worker {
 
       return this.ts.createSolutionBuilderWithWatch(
         host,
-        this.options.projects,
+        this.data.projects,
         buildOptions
       );
     }
@@ -129,7 +119,7 @@ export class Worker {
 
     return this.ts.createSolutionBuilder(
       host,
-      this.options.projects,
+      this.data.projects,
       buildOptions
     );
   }
@@ -149,7 +139,7 @@ export class Worker {
     const transformers: ts.CustomTransformers = {
       after: [
         createRewriteImportTransformer({
-          extname: this.extname || JS_EXT,
+          extname: this.data.extname || JS_EXT,
           system: this.system,
         }),
       ],
@@ -165,7 +155,8 @@ export class Worker {
     host.getParsedCommandLine = (path: string) => {
       const basePath = trimSuffix(path, extname(path));
       const { options } = this.ts.convertCompilerOptionsFromJson(
-        this.target,
+        this.data.target,
+        dirname(path),
         path
       );
 
@@ -180,11 +171,11 @@ export class Worker {
       // access the same tsbuildinfo files and potentially read/write corrupted
       // tsbuildinfo files
       if (
-        this.extname &&
+        this.data.extname &&
         !config.options.tsBuildInfoFile &&
         isIncrementalCompilation(config.options)
       ) {
-        config.options.tsBuildInfoFile = `${basePath}${this.extname}.tsbuildinfo`;
+        config.options.tsBuildInfoFile = `${basePath}${this.data.extname}.tsbuildinfo`;
       }
 
       return config;

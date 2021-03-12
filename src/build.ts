@@ -5,7 +5,6 @@ import { WorkerOptions } from "./worker/types";
 import stringToStream from "string-to-stream";
 import { Stream } from "stream";
 import { trimPrefix } from "./utils";
-import chalk from "chalk";
 import { getReportStyles } from "./report";
 import onExit from "signal-exit";
 import debug from "./debug";
@@ -38,6 +37,40 @@ function validateTargets(targets: readonly Target[]) {
   }
 }
 
+async function runWorker({
+  stdout,
+  stderr,
+  ...options
+}: WorkerOptions & Pick<BuildOptions, "stdout" | "stderr">): Promise<number> {
+  const worker = fork(WORKER_PATH, [], {
+    cwd: options.cwd,
+    stdio: ["pipe", stdout, stderr, "ipc"],
+  });
+
+  if (worker.stdin) {
+    stringToStream(JSON.stringify(options)).pipe(worker.stdin);
+  }
+
+  const removeExitHandler = onExit((code, signal) => {
+    debug(
+      `Killing worker ${worker.pid} because parent process received ${
+        signal || code || 0
+      }`
+    );
+
+    worker.kill(code || "SIGTERM");
+  });
+
+  try {
+    return await new Promise<number>((resolve, reject) => {
+      worker.on("error", reject);
+      worker.on("exit", resolve);
+    });
+  } finally {
+    removeExitHandler();
+  }
+}
+
 export interface BuildOptions extends Config {
   watch?: boolean;
   clean?: boolean;
@@ -50,72 +83,35 @@ export async function build({
   targets: inputTargets,
   stdout = "inherit",
   stderr = "inherit",
-  verbose,
-  watch,
-  clean,
   projects,
-  cwd,
-  compiler,
+  ...options
 }: BuildOptions): Promise<number> {
   if (!projects.length) {
     throw new Error("At least one project is required");
   }
 
-  const targets = inputTargets && inputTargets.length ? inputTargets : [{}];
+  const targets: readonly Target[] =
+    inputTargets && inputTargets.length ? inputTargets : [{}];
 
   validateTargets(targets);
 
   const reportStyles = getReportStyles();
 
-  async function runWorker(
-    target: Target,
-    prefixStyle: chalk.Chalk
-  ): Promise<number> {
-    const prefix = `[${trimPrefix(target.extname || DEFAULT_EXTNAME, ".")}]: `;
-    const data: WorkerOptions = {
-      target,
-      verbose,
-      watch,
-      clean,
-      projects,
-      compiler,
-      cwd,
-      reportPrefix: prefixStyle(prefix),
-    };
-
-    const worker = fork(WORKER_PATH, [], {
-      cwd,
-      stdio: ["pipe", stdout, stderr, "ipc"],
-    });
-
-    if (worker.stdin) {
-      stringToStream(JSON.stringify(data)).pipe(worker.stdin);
-    }
-
-    const removeExitHandler = onExit((code, signal) => {
-      debug(
-        `Killing worker ${worker.pid} because parent process received ${
-          signal || code || 0
-        }`
-      );
-
-      worker.kill(code || "SIGTERM");
-    });
-
-    try {
-      return await new Promise<number>((resolve, reject) => {
-        worker.on("error", reject);
-        worker.on("exit", resolve);
-      });
-    } finally {
-      removeExitHandler();
-    }
-  }
-
   const codes = await Promise.all(
-    targets.map((target, i) =>
-      runWorker(target, reportStyles[i % reportStyles.length])
-    )
+    targets.map(({ extname, ...target }, i) => {
+      const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
+      const prefixStyle = reportStyles[i % reportStyles.length];
+
+      return runWorker({
+        ...options,
+        projects,
+        stdout,
+        stderr,
+        extname,
+        target,
+        reportPrefix: prefixStyle(prefix),
+      });
+    })
   );
 
   return codes.find((code) => code !== 0) || 0;

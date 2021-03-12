@@ -282,6 +282,15 @@ describe("single project", () => {
       )
     );
   });
+
+  test("set declarationDir in target", async () => {
+    await writeConfig({
+      targets: [{ declarationDir: "./types" }],
+    });
+
+    const { exitCode } = await runCLI([]);
+    expect(exitCode).toEqual(0);
+  });
 });
 
 describe("project references", () => {
