@@ -105,6 +105,7 @@ export class Worker {
         buildOptions
       );
     }
+
     const host = this.ts.createSolutionBuilderHost(
       this.system,
       createProgram,
