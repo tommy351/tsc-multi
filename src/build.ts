@@ -75,6 +75,8 @@ export interface BuildOptions extends Config {
   watch?: boolean;
   clean?: boolean;
   verbose?: boolean;
+  dry?: boolean;
+  force?: boolean;
   stdout?: Stdio;
   stderr?: Stdio;
 }

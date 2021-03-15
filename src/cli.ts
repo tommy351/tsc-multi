@@ -17,6 +17,15 @@ const args = yargs(process.argv.slice(2))
       type: "boolean",
       description: "Print debug logs.",
     },
+    dry: {
+      type: "boolean",
+      description:
+        "Show what would be done but doesn't actually build anything.",
+    },
+    force: {
+      type: "boolean",
+      description: "Rebuild all projects.",
+    },
     cwd: {
       type: "string",
       description: "Current working directory.",
@@ -73,6 +82,8 @@ const args = yargs(process.argv.slice(2))
   const code = await build({
     ...config,
     verbose: args.verbose,
+    dry: args.dry,
+    force: args.force,
     watch: args.watch,
     clean: args.clean,
   });

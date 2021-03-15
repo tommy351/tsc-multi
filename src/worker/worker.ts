@@ -88,6 +88,8 @@ export class Worker {
   private createBuilder() {
     const buildOptions: ts.BuildOptions = {
       verbose: this.data.verbose,
+      dry: this.data.dry,
+      force: this.data.force,
     };
     const createProgram = this.ts.createSemanticDiagnosticsBuilderProgram;
 

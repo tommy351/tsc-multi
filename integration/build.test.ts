@@ -291,6 +291,23 @@ describe("single project", () => {
     const { exitCode } = await runCLI([]);
     expect(exitCode).toEqual(0);
   });
+
+  test("dry run", async () => {
+    const { exitCode } = await runCLI(["--dry"]);
+    expect(exitCode).toEqual(0);
+
+    await expect(listOutputFiles()).resolves.toEqual({});
+  });
+
+  test("force rebuild", async () => {
+    // First build
+    await runCLI([]);
+
+    // Force rebuild
+    const { exitCode } = await runCLI(["--force"]);
+    expect(exitCode).toEqual(0);
+    await matchOutputFiles("single-project/only-commonjs");
+  });
 });
 
 describe("project references", () => {
