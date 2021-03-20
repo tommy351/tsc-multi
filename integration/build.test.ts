@@ -656,7 +656,13 @@ describe("dynamic import", () => {
     const cjsResult = await runCJSModule("dist/index.cjs");
     expect(cjsResult.stdout).toEqual("Hello Dynamic");
 
-    const esmResult = await runCJSModule("dist/index.mjs");
-    expect(esmResult.stdout).toEqual("Hello Dynamic");
+    // Skip the following tests if ESM is not natively supported on Node.js.
+    // Because the `esm` package somehow doesn't support dynamic import .mjs
+    // files?
+    if (ESM_SUPPORTED) {
+      const esmResult = await runCJSModule("dist/index.mjs");
+      // eslint-disable-next-line jest/no-conditional-expect
+      expect(esmResult.stdout).toEqual("Hello Dynamic");
+    }
   });
 });

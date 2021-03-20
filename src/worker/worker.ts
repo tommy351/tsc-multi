@@ -86,17 +86,34 @@ export class Worker {
   }
 
   private createSystem(sys: Readonly<ts.System>): ts.System {
+    const getReadPaths = (path: string) => {
+      const paths = [this.rewritePath(path)];
+
+      // Source files may be .js files when `allowJs` is enabled. When a .js
+      // file with rewritten path doesn't exist, retry again without rewriting
+      // the path.
+      if (path.endsWith(JS_EXT)) {
+        paths.push(path);
+      }
+
+      return paths;
+    };
+
     return {
       ...sys,
-      fileExists: (path) => {
-        if (sys.fileExists(this.rewritePath(path))) return true;
-        if (path.endsWith(JS_EXT)) return sys.fileExists(path);
-        return false;
+      fileExists: (inputPath) => {
+        return getReadPaths(inputPath).reduce<boolean>(
+          (result, path) => result || sys.fileExists(path),
+          false
+        );
       },
-      readFile: (path, encoding) => {
-        const content = sys.readFile(this.rewritePath(path), encoding);
-        if (content != null) return content;
-        if (path.endsWith(JS_EXT)) return sys.readFile(path, encoding);
+      readFile: (inputPath, encoding) => {
+        return (
+          getReadPaths(inputPath).reduce<string | undefined | null>(
+            (result, path) => result ?? sys.readFile(path, encoding),
+            null
+          ) ?? undefined
+        );
       },
       writeFile: (path, data, writeByteOrderMark) => {
         const newPath = this.rewritePath(path);
