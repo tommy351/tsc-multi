@@ -633,3 +633,30 @@ describe("allowJs", () => {
     await matchOutputFiles("allow-js");
   });
 });
+
+describe("dynamic import", () => {
+  beforeEach(async () => {
+    await copyInputFixture("dynamic-import");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("dynamic-import");
+
+    // Check if the output files are executable
+    const cjsResult = await runCJSModule("dist/index.cjs");
+    expect(cjsResult.stdout).toEqual("Hello Dynamic");
+
+    const esmResult = await runCJSModule("dist/index.mjs");
+    expect(esmResult.stdout).toEqual("Hello Dynamic");
+  });
+});

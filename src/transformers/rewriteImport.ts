@@ -45,6 +45,7 @@ export function createRewriteImportTransformer(
     let sourceFile: ts.SourceFile;
 
     const visitor: ts.Visitor = (node) => {
+      // ESM import
       if (ts.isImportDeclaration(node)) {
         return ts.factory.createImportDeclaration(
           node.decorators,
@@ -54,6 +55,7 @@ export function createRewriteImportTransformer(
         );
       }
 
+      // ESM export
       if (ts.isExportDeclaration(node)) {
         if (!node.moduleSpecifier) return node;
 
@@ -66,6 +68,22 @@ export function createRewriteImportTransformer(
         );
       }
 
+      // ESM dynamic import
+      if (
+        ts.isCallExpression(node) &&
+        node.expression.kind === ts.SyntaxKind.ImportKeyword
+      ) {
+        const [firstArg, ...restArg] = node.arguments;
+        if (!firstArg) return node;
+
+        return ts.factory.createCallExpression(
+          node.expression,
+          node.typeArguments,
+          [updateModuleSpecifier(sourceFile, firstArg), ...restArg]
+        );
+      }
+
+      // CommonJS require
       if (
         ts.isCallExpression(node) &&
         ts.isIdentifier(node.expression) &&
