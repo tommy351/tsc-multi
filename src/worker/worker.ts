@@ -28,7 +28,7 @@ export class Worker {
 
   constructor(private readonly data: WorkerOptions, system?: ts.System) {
     this.ts = loadCompiler(data.cwd, data.compiler);
-    this.system = system || this.ts.sys;
+    this.system = this.createSystem(system || this.ts.sys);
     this.reporter = createReporter({
       cwd: data.cwd,
       system: this.system,
@@ -85,6 +85,44 @@ export class Worker {
     return JSON.stringify(json);
   }
 
+  private createSystem(sys: Readonly<ts.System>): ts.System {
+    return {
+      ...sys,
+      fileExists: (path) => {
+        if (sys.fileExists(this.rewritePath(path))) return true;
+        if (path.endsWith(JS_EXT)) return sys.fileExists(path);
+        return false;
+      },
+      readFile: (path, encoding) => {
+        const content = sys.readFile(this.rewritePath(path), encoding);
+        if (content != null) return content;
+        if (path.endsWith(JS_EXT)) return sys.readFile(path, encoding);
+      },
+      writeFile: (path, data, writeByteOrderMark) => {
+        const newPath = this.rewritePath(path);
+        const newData = (() => {
+          if (path.endsWith(JS_EXT)) {
+            return this.rewriteSourceMappingURL(data);
+          }
+
+          if (path.endsWith(JS_MAP_EXT)) {
+            return this.rewriteSourceMap(data);
+          }
+
+          return data;
+        })();
+
+        debug("Write file: %s", newPath);
+        sys.writeFile(newPath, newData, writeByteOrderMark);
+      },
+      deleteFile: (path) => {
+        const newPath = this.rewritePath(path);
+        debug("Delete file: %s", newPath);
+        sys.deleteFile?.(newPath);
+      },
+    };
+  }
+
   private createBuilder() {
     const buildOptions: ts.BuildOptions = {
       verbose: this.data.verbose,
@@ -129,14 +167,7 @@ export class Worker {
   private patchSolutionBuilderHost<T extends ts.BuilderProgram>(
     host: ts.SolutionBuilderHostBase<T>
   ) {
-    const {
-      writeFile,
-      deleteFile,
-      fileExists,
-      readFile,
-      createProgram,
-      reportDiagnostic,
-    } = host;
+    const { createProgram, reportDiagnostic } = host;
 
     const transformers: ts.CustomTransformers = {
       after: [
@@ -204,38 +235,6 @@ export class Worker {
       };
 
       return program;
-    };
-
-    host.fileExists = (path) => {
-      return fileExists(this.rewritePath(path));
-    };
-
-    host.readFile = (path, encoding) => {
-      return readFile(this.rewritePath(path), encoding);
-    };
-
-    host.writeFile = (path, data, writeByteOrderMark) => {
-      const newPath = this.rewritePath(path);
-      const newData = (() => {
-        if (path.endsWith(JS_EXT)) {
-          return this.rewriteSourceMappingURL(data);
-        }
-
-        if (path.endsWith(JS_MAP_EXT)) {
-          return this.rewriteSourceMap(data);
-        }
-
-        return data;
-      })();
-
-      debug("Write file: %s", newPath);
-      writeFile?.(newPath, newData, writeByteOrderMark);
-    };
-
-    host.deleteFile = (path) => {
-      const newPath = this.rewritePath(path);
-      debug("Delete file: %s", newPath);
-      deleteFile?.(newPath);
     };
   }
 }

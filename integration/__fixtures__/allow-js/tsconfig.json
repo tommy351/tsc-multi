@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "jsx": "react-jsx"
+  }
+}

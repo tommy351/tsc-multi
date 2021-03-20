@@ -613,3 +613,23 @@ describe("tsconfig error", () => {
     expect(stderr).toEqual(expect.stringContaining("Found 1 error."));
   });
 });
+
+describe("allowJs", () => {
+  beforeEach(async () => {
+    await copyInputFixture("allow-js");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI([]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("allow-js");
+  });
+});
