@@ -131,6 +131,20 @@ Specify the path of the config file. The path can be either a relative path or a
 
 Specify a custom TypeScript compiler.
 
+### `--dry`
+
+Show what would be done but doesn't actually build anything.
+
+### `--force`
+
+Rebuild all projects.
+
+## Caveats
+
+- Only file extension can be renamed currently.
+- Only CommonJS and ESM are tested currently, AMD, UMD or SystemJS modules may have issues.
+- When workers read/write type declaration files (`.d.ts`), there are few chances that TypeScript compiler might read files that is writing by other workers. This usually only happens on machines with poor IO performance.
+
 ## License
 
 MIT
