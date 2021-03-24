@@ -7,6 +7,7 @@ import { Stream } from "stream";
 import { trimPrefix } from "./utils";
 import { getReportStyles } from "./report";
 import onExit from "signal-exit";
+import pAll from "p-all";
 import debug from "./debug";
 
 const WORKER_PATH = join(__dirname, "worker/entry.js");
@@ -79,6 +80,7 @@ export interface BuildOptions extends Config {
   force?: boolean;
   stdout?: Stdio;
   stderr?: Stdio;
+  maxWorkers?: number;
 }
 
 export async function build({
@@ -86,6 +88,7 @@ export async function build({
   stdout = "inherit",
   stderr = "inherit",
   projects,
+  maxWorkers,
   ...options
 }: BuildOptions): Promise<number> {
   if (!projects.length) {
@@ -99,21 +102,24 @@ export async function build({
 
   const reportStyles = getReportStyles();
 
-  const codes = await Promise.all(
+  const codes = await pAll(
     targets.map(({ extname, ...target }, i) => {
       const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
       const prefixStyle = reportStyles[i % reportStyles.length];
 
-      return runWorker({
-        ...options,
-        projects,
-        stdout,
-        stderr,
-        extname,
-        target,
-        reportPrefix: prefixStyle(prefix),
-      });
-    })
+      return () => {
+        return runWorker({
+          ...options,
+          projects,
+          stdout,
+          stderr,
+          extname,
+          target,
+          reportPrefix: prefixStyle(prefix),
+        });
+      };
+    }),
+    { concurrency: maxWorkers }
   );
 
   return codes.find((code) => code !== 0) || 0;

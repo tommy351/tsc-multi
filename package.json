@@ -51,6 +51,7 @@
     "debug": "^4.3.1",
     "fast-glob": "^3.2.5",
     "get-stdin": "^8.0.0",
+    "p-all": "^3.0.0",
     "signal-exit": "^3.0.3",
     "string-to-stream": "^3.0.1",
     "superstruct": "^0.14.0",

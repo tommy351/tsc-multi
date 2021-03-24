@@ -308,6 +308,65 @@ describe("single project", () => {
     expect(exitCode).toEqual(0);
     await matchOutputFiles("single-project/only-commonjs");
   });
+
+  test("set maxWorkers in config", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+      maxWorkers: 1,
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/multiple-targets");
+  });
+
+  test("maxWorkers=0 in config", async () => {
+    await writeConfig({
+      maxWorkers: 0,
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).toEqual(1);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        "StructError: At path: maxWorkers -- Expected a integer greater than or equal to 1 but received `0`"
+      )
+    );
+  });
+
+  test("maxWorkers=3.14 in config", async () => {
+    await writeConfig({
+      maxWorkers: 3.14,
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).toEqual(1);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        "StructError: At path: maxWorkers -- Expected an integer, but received: 3.14"
+      )
+    );
+  });
+
+  test("set maxWorkers in CLI", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI(["--maxWorkers", "1"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/multiple-targets");
+  });
 });
 
 describe("project references", () => {

@@ -105,6 +105,10 @@ Path to TypeScript projects. It can be either a folder which contains `tsconfig.
 
 Specify a custom TypeScript compiler (e.g. [ttypescript]).
 
+### `maxWorkers`
+
+Specify the maximum number of concurrent workers.
+
 ## CLI Options
 
 ### `--watch`
@@ -139,11 +143,15 @@ Show what would be done but doesn't actually build anything.
 
 Rebuild all projects.
 
+### `--maxWorkers`
+
+Specify the maximum number of concurrent workers.
+
 ## Caveats
 
 - Only file extension can be renamed currently.
 - Only CommonJS and ESM are tested currently, AMD, UMD or SystemJS modules may have issues.
-- When workers read/write type declaration files (`.d.ts`), there are few chances that TypeScript compiler might read files that is writing by other workers. This usually only happens on machines with poor IO performance.
+- When workers read/write type declaration files (`.d.ts`), there are few chances that TypeScript compiler might read files that is writing by other workers. This usually only happens on machines with poor IO performance. Set `maxWorkers` to `1` may help.
 
 ## License
 

@@ -7,6 +7,8 @@ import {
   validate,
   optional,
   type,
+  integer,
+  min,
 } from "superstruct";
 import Debug from "./debug";
 import { readJSON, tryReadJSON } from "./utils";
@@ -24,6 +26,7 @@ const configSchema = object({
   projects: optional(array(string())),
   targets: optional(array(targetSchema)),
   compiler: optional(string()),
+  maxWorkers: optional(min(integer(), 1)),
 });
 
 export type InferConfig = Infer<typeof configSchema>;

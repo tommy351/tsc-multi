@@ -38,6 +38,10 @@ const args = yargs(process.argv.slice(2))
       type: "string",
       description: "Set a custom TypeScript compiler.",
     },
+    maxWorkers: {
+      type: "number",
+      description: "Specify the maximum number of concurrent workers.",
+    },
   })
   .command(
     "$0 [projects..]",
@@ -86,6 +90,7 @@ const args = yargs(process.argv.slice(2))
     force: args.force,
     watch: args.watch,
     clean: args.clean,
+    maxWorkers: args.maxWorkers,
   });
 
   process.exitCode = code;
