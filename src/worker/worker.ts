@@ -8,7 +8,7 @@ import {
 } from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
 import { WorkerOptions } from "./types";
-import { dirname, extname } from "path";
+import { dirname, extname, join } from "path";
 
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
@@ -39,6 +39,11 @@ export class Worker {
   }
 
   public run(): number {
+    if (this.data.transpileOnly) {
+      this.transpile();
+      return 0;
+    }
+
     const builder = this.createBuilder();
 
     if (this.data.clean) {
@@ -253,5 +258,68 @@ export class Worker {
 
       return program;
     };
+  }
+
+  private transpile() {
+    for (const project of this.data.projects) {
+      this.transpileProject(project);
+    }
+  }
+
+  private transpileProject(projectPath: string) {
+    // TODO: Detect tsconfig.json path
+    const tsConfigPath = join(projectPath, "tsconfig.json");
+    const { options } = this.ts.convertCompilerOptionsFromJson(
+      this.data.target,
+      projectPath,
+      tsConfigPath
+    );
+    const parseConfigFileHost: ts.ParseConfigFileHost = {
+      ...this.system,
+      onUnRecoverableConfigFileDiagnostic: this.reporter.reportDiagnostic,
+    };
+
+    const config = this.ts.getParsedCommandLineOfConfigFile(
+      tsConfigPath,
+      options,
+      parseConfigFileHost
+    );
+    if (!config) return;
+
+    // TODO: Merge custom transformers
+    const transformers: ts.CustomTransformers = {
+      after: [
+        createRewriteImportTransformer({
+          extname: this.data.extname || JS_EXT,
+          system: this.system,
+        }),
+      ],
+    };
+
+    for (const inputPath of config.fileNames) {
+      if (!this.system.fileExists(inputPath)) continue;
+
+      const content = this.system.readFile(inputPath) || "";
+      const [outputPath, sourceMapPath] = this.ts.getOutputFileNames(
+        config,
+        inputPath,
+        false
+      );
+      const output = this.ts.transpileModule(content, {
+        compilerOptions: config.options,
+        fileName: inputPath,
+        transformers,
+      });
+
+      for (const diag of output.diagnostics ?? []) {
+        this.reporter.reportDiagnostic(diag);
+      }
+
+      this.system.writeFile(outputPath, output.outputText);
+
+      if (typeof output.sourceMapText === "string") {
+        this.system.writeFile(sourceMapPath, output.sourceMapText);
+      }
+    }
   }
 }

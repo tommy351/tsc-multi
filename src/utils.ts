@@ -28,7 +28,7 @@ export async function readJSON(path: string): Promise<any> {
 export async function tryReadJSON(path: string): Promise<any> {
   try {
     return await readJSON(path);
-  } catch (err) {
+  } catch (err: any) {
     if (err.code === "ENOENT") return {};
     throw err;
   }

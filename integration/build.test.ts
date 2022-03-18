@@ -725,3 +725,52 @@ describe("dynamic import", () => {
     }
   });
 });
+
+describe("transpile only", () => {
+  beforeEach(async () => {
+    await copyInputFixture("transpile-only");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [{ extname: ".cjs", module: "commonjs", transpileOnly: true }],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("transpile-only");
+  });
+
+  test("sourceMap = true", async () => {
+    await writeConfig({
+      targets: [
+        {
+          extname: ".cjs",
+          module: "commonjs",
+          transpileOnly: true,
+          sourceMap: true,
+        },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("transpile-only-source-map");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".mjs", module: "esnext", declaration: true },
+        { extname: ".cjs", module: "commonjs", transpileOnly: true },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("transpile-only-multi-targets");
+  });
+});

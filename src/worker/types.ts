@@ -12,4 +12,5 @@ export interface WorkerOptions {
   cwd: string;
   compiler?: string;
   reportPrefix?: string;
+  transpileOnly?: boolean;
 }

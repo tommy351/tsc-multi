@@ -15,8 +15,8 @@ async function loadWorkerData(): Promise<WorkerOptions> {
   debug("Target", data.target);
 
   const worker = new Worker(data);
-  process.exitCode = worker.run();
+  process.exitCode = await worker.run();
 })().catch((err) => {
   console.error(err);
-  process.exitCode = 1;
+  process.exitCode ||= 1;
 });

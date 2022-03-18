@@ -78,6 +78,8 @@ Build targets. All options except `extname` will override `compilerOptions` in `
 {
   // Rename the extension of output files
   extname: ".js",
+  // Skip type-checking (Experimental)
+  transpileOnly: false,
   // Compiler options
   module: "esnext",
   target: "es2018",
