@@ -773,4 +773,23 @@ describe("transpile only", () => {
 
     await matchOutputFiles("transpile-only-multi-targets");
   });
+
+  test("set tsconfig.json path in config", async () => {
+    await writeConfig({
+      targets: [{ extname: ".cjs", module: "commonjs", transpileOnly: true }],
+      projects: ["tsconfig.custom.json"],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+  });
+
+  test("set tsconfig.json path in CLI", async () => {
+    await writeConfig({
+      targets: [{ extname: ".cjs", module: "commonjs", transpileOnly: true }],
+    });
+
+    const { exitCode } = await runCLI(["tsconfig.custom.json"]);
+    expect(exitCode).toEqual(0);
+  });
 });
