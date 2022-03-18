@@ -298,7 +298,12 @@ export class Worker {
     };
 
     for (const inputPath of config.fileNames) {
-      if (!this.system.fileExists(inputPath)) continue;
+      // - Ignore if file does not exist
+      // - or if file is a declaration file, which will generate an empty file and
+      //   throw "Output generation failed" error
+      if (!this.system.fileExists(inputPath) || inputPath.endsWith(".d.ts")) {
+        continue;
+      }
 
       const content = this.system.readFile(inputPath) || "";
       const [outputPath, sourceMapPath] = this.ts.getOutputFileNames(
@@ -309,6 +314,7 @@ export class Worker {
       const output = this.ts.transpileModule(content, {
         compilerOptions: config.options,
         fileName: inputPath,
+        reportDiagnostics: true,
         transformers,
       });
 
