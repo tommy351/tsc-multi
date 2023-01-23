@@ -1,4 +1,4 @@
-import { resolve, dirname, extname } from "path";
+import { resolve, dirname, extname, join } from "path";
 import ts from "typescript";
 import { trimSuffix } from "../utils";
 
@@ -6,6 +6,12 @@ const JS_EXT = ".js";
 
 function isRelativePath(path: string): boolean {
   return path.startsWith("./") || path.startsWith("../");
+}
+
+function isWithinPackage(filePath: string) {
+  const packageJsonPath = join(process.cwd(), "package.json");
+  const resolvedPath = resolve(filePath);
+  return resolvedPath.startsWith(dirname(packageJsonPath));
 }
 
 export interface RewriteImportTransformerOptions {
@@ -28,6 +34,9 @@ export function createRewriteImportTransformer(
     node: ts.Expression
   ): ts.Expression {
     if (!ts.isStringLiteral(node) || !isRelativePath(node.text)) return node;
+    if (/node_modules/.test(node.text) || !isWithinPackage(node.text)) {
+      return node;
+    }
 
     if (isDirectory(sourceFile, node.text)) {
       return ts.factory.createStringLiteral(
@@ -36,7 +45,9 @@ export function createRewriteImportTransformer(
     }
 
     const ext = extname(node.text);
-    const base = ext === JS_EXT ? trimSuffix(node.text, JS_EXT) : node.text;
+    if (!!ext && ext !== JS_EXT) return node;
+
+    const base = trimSuffix(node.text, JS_EXT);
 
     return ts.factory.createStringLiteral(`${base}${options.extname}`);
   }
