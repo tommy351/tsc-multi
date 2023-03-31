@@ -3,14 +3,13 @@ import execa from "execa";
 import { join } from "path";
 import tmp from "tmp-promise";
 import { copy, writeJSON, readFile, mkdirp } from "fs-extra";
-import { Config } from "../src";
+import { Config, Target } from "../src";
 import { toMatchFile } from "jest-file-snapshot";
 import glob from "fast-glob";
 
 expect.extend({ toMatchFile });
 
 const TMP_DIR = join(__dirname, ".tmp");
-const ESM_SUPPORTED = +process.versions.node.split(".")[0] >= 12;
 
 let tmpDir: tmp.DirectoryResult;
 
@@ -81,9 +80,7 @@ function runCJSModule(path: string) {
 async function runESMModule(path: string) {
   await writeJSON(join(tmpDir.path, "package.json"), { type: "module" });
 
-  return execa.node(join(tmpDir.path, path), [], {
-    ...(!ESM_SUPPORTED && { nodeOptions: ["-r", "esm"] }),
-  });
+  return execa.node(join(tmpDir.path, path), []);
 }
 
 describe("single project", () => {
@@ -268,7 +265,7 @@ describe("single project", () => {
     await writeConfig({
       targets: [
         { extname: ".cjs", module: "commonjs" },
-        { extname: ".es2018.js", target: "es2018" },
+        { extname: ".es2018.js", module: "es2018" },
         { extname: ".cjs", module: "esnext" },
       ],
     });
@@ -517,7 +514,7 @@ describe("custom compiler", () => {
       ],
     });
 
-    const { exitCode } = await runCLI([".", "--compiler", "ttypescript"]);
+    const { exitCode } = await runCLI([".", "--compiler", "ttsc"]);
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("custom-compiler");
@@ -529,7 +526,7 @@ describe("custom compiler", () => {
         { extname: ".cjs", module: "commonjs" },
         { extname: ".mjs", module: "esnext" },
       ],
-      compiler: "ttypescript",
+      compiler: "ttsc",
     });
 
     const { exitCode } = await runCLI(["."]);
@@ -715,14 +712,9 @@ describe("dynamic import", () => {
     const cjsResult = await runCJSModule("dist/index.cjs");
     expect(cjsResult.stdout).toEqual("Hello Dynamic");
 
-    // Skip the following tests if ESM is not natively supported on Node.js.
-    // Because the `esm` package somehow doesn't support dynamic import .mjs
-    // files?
-    if (ESM_SUPPORTED) {
-      const esmResult = await runCJSModule("dist/index.mjs");
-      // eslint-disable-next-line jest/no-conditional-expect
-      expect(esmResult.stdout).toEqual("Hello Dynamic");
-    }
+    const esmResult = await runCJSModule("dist/index.mjs");
+    // eslint-disable-next-line jest/no-conditional-expect
+    expect(esmResult.stdout).toEqual("Hello Dynamic");
   });
 });
 
@@ -761,12 +753,12 @@ describe("transpile only", () => {
   });
 
   test("multiple targets", async () => {
-    await writeConfig({
-      targets: [
-        { extname: ".mjs", module: "esnext", declaration: true },
-        { extname: ".cjs", module: "commonjs", transpileOnly: true },
-      ],
-    });
+    const targets: Target[] = [
+      { extname: ".mjs", module: "esnext", declaration: true },
+      { extname: ".cjs", module: "commonjs", transpileOnly: true },
+    ];
+
+    await writeConfig({ targets });
 
     const { exitCode } = await runCLI();
     expect(exitCode).toEqual(0);

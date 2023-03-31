@@ -1,4 +1,4 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 exports.DOT_FOLDER = void 0;
 exports.DOT_FOLDER = "dot.folder";

@@ -1,4 +1,4 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var print_js_1 = require("./print.cjs");
-print_js_1["default"]();
+(0, print_js_1.default)();
