@@ -785,3 +785,25 @@ describe("transpile only", () => {
     expect(exitCode).toEqual(0);
   });
 });
+
+describe("TypeScript 4", () => {
+  beforeEach(async () => {
+    await copyInputFixture("single-project");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [{ module: "commonjs" }],
+      compiler: "typescript-4",
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("typescript-4");
+
+    // Check if the output files are executable
+    const result = await runCJSModule("dist/index.js");
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+});
