@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
     "clean": "rm -rf dist",
     "test": "npm-run-all test:*",
-    "test:integration": "jest --config integration/jest.config.js"
+    "test:integration": "jest --runInBand --config integration/jest.config.js"
   },
   "repository": {
     "type": "git",
