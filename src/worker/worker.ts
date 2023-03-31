@@ -196,6 +196,7 @@ export class Worker {
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
           system: this.system,
+          ts: this.ts,
         }),
       ],
     };
@@ -293,6 +294,7 @@ export class Worker {
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
           system: this.system,
+          ts: this.ts,
         }),
       ],
     };

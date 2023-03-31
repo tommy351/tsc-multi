@@ -1,5 +1,5 @@
 import { resolve, dirname, extname } from "path";
-import ts from "typescript";
+import type ts from "typescript";
 import { trimSuffix } from "../utils";
 
 const JS_EXT = ".js";
@@ -11,26 +11,40 @@ function isRelativePath(path: string): boolean {
 export interface RewriteImportTransformerOptions {
   extname: string;
   system: ts.System;
+  ts: typeof ts;
 }
 
 export function createRewriteImportTransformer(
   options: RewriteImportTransformerOptions
 ): ts.TransformerFactory<ts.SourceFile> {
+  const {
+    sys,
+    factory,
+    isStringLiteral,
+    isImportDeclaration,
+    isCallExpression,
+    SyntaxKind,
+    visitNode,
+    visitEachChild,
+    isIdentifier,
+    isExportDeclaration,
+  } = options.ts;
+
   function isDirectory(sourceFile: ts.SourceFile, path: string): boolean {
     const sourcePath = sourceFile.fileName;
     const fullPath = resolve(dirname(sourcePath), path);
 
-    return options.system.directoryExists(fullPath);
+    return sys.directoryExists(fullPath);
   }
 
   function updateModuleSpecifier(
     sourceFile: ts.SourceFile,
     node: ts.Expression
   ): ts.Expression {
-    if (!ts.isStringLiteral(node) || !isRelativePath(node.text)) return node;
+    if (!isStringLiteral(node) || !isRelativePath(node.text)) return node;
 
     if (isDirectory(sourceFile, node.text)) {
-      return ts.factory.createStringLiteral(
+      return factory.createStringLiteral(
         `${node.text}/index${options.extname}`
       );
     }
@@ -38,7 +52,7 @@ export function createRewriteImportTransformer(
     const ext = extname(node.text);
     const base = ext === JS_EXT ? trimSuffix(node.text, JS_EXT) : node.text;
 
-    return ts.factory.createStringLiteral(`${base}${options.extname}`);
+    return factory.createStringLiteral(`${base}${options.extname}`);
   }
 
   return (ctx) => {
@@ -46,8 +60,8 @@ export function createRewriteImportTransformer(
 
     const visitor: ts.Visitor = (node) => {
       // ESM import
-      if (ts.isImportDeclaration(node)) {
-        return ts.factory.createImportDeclaration(
+      if (isImportDeclaration(node)) {
+        return factory.createImportDeclaration(
           node.modifiers,
           node.importClause,
           updateModuleSpecifier(sourceFile, node.moduleSpecifier),
@@ -56,10 +70,10 @@ export function createRewriteImportTransformer(
       }
 
       // ESM export
-      if (ts.isExportDeclaration(node)) {
+      if (isExportDeclaration(node)) {
         if (!node.moduleSpecifier) return node;
 
-        return ts.factory.createExportDeclaration(
+        return factory.createExportDeclaration(
           node.modifiers,
           node.isTypeOnly,
           node.exportClause,
@@ -70,13 +84,13 @@ export function createRewriteImportTransformer(
 
       // ESM dynamic import
       if (
-        ts.isCallExpression(node) &&
-        node.expression.kind === ts.SyntaxKind.ImportKeyword
+        isCallExpression(node) &&
+        node.expression.kind === SyntaxKind.ImportKeyword
       ) {
         const [firstArg, ...restArg] = node.arguments;
         if (!firstArg) return node;
 
-        return ts.factory.createCallExpression(
+        return factory.createCallExpression(
           node.expression,
           node.typeArguments,
           [updateModuleSpecifier(sourceFile, firstArg), ...restArg]
@@ -85,26 +99,26 @@ export function createRewriteImportTransformer(
 
       // CommonJS require
       if (
-        ts.isCallExpression(node) &&
-        ts.isIdentifier(node.expression) &&
+        isCallExpression(node) &&
+        isIdentifier(node.expression) &&
         node.expression.escapedText === "require"
       ) {
         const [firstArg, ...restArgs] = node.arguments;
         if (!firstArg) return node;
 
-        return ts.factory.createCallExpression(
+        return factory.createCallExpression(
           node.expression,
           node.typeArguments,
           [updateModuleSpecifier(sourceFile, firstArg), ...restArgs]
         );
       }
 
-      return ts.visitEachChild(node, visitor, ctx);
+      return visitEachChild(node, visitor, ctx);
     };
 
     return (file) => {
       sourceFile = file;
-      return ts.visitNode(file, visitor) as ts.SourceFile;
+      return visitNode(file, visitor) as ts.SourceFile;
     };
   };
 }

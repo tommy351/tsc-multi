@@ -90,7 +90,7 @@
     "ts-transformer-keys": "^0.4.4",
     "ttsc": "^0.3.1",
     "typescript": "^5.0.3",
-    "typescript-4": "npm:typescript@4"
+    "typescript-4": "npm:typescript@4.3.x"
   },
   "peerDependencies": {
     "typescript": ">=3"
