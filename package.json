@@ -47,11 +47,11 @@
     "node": ">=14"
   },
   "dependencies": {
-    "chalk": "^4.1.0",
     "debug": "^4.3.4",
     "fast-glob": "^3.2.12",
     "get-stdin": "^8.0.0",
     "p-all": "^3.0.0",
+    "picocolors": "^1.0.0",
     "signal-exit": "^3.0.7",
     "string-to-stream": "^3.0.1",
     "superstruct": "^1.0.3",

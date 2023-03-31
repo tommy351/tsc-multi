@@ -1,4 +1,5 @@
-import chalk from "chalk";
+import pc from "picocolors";
+import type { Formatter } from "picocolors/types";
 import { Writable } from "stream";
 import type ts from "typescript";
 
@@ -64,13 +65,6 @@ export function createReporter({
   };
 }
 
-export function getReportStyles(): chalk.Chalk[] {
-  return [
-    chalk.red,
-    chalk.green,
-    chalk.yellow,
-    chalk.blue,
-    chalk.magenta,
-    chalk.cyan,
-  ];
+export function getReportStyles(): Formatter[] {
+  return [pc.red, pc.green, pc.yellow, pc.blue, pc.magenta, pc.cyan];
 }
