@@ -793,7 +793,14 @@ describe("TypeScript 4", () => {
 
   test("success", async () => {
     await writeConfig({
-      targets: [{ module: "commonjs" }],
+      targets: [
+        {
+          module: "commonjs",
+          // Using LF line ending because file snapshots always use it in Git
+          // attributes.
+          newLine: "LF",
+        },
+      ],
       compiler: "typescript-4",
     });
 
