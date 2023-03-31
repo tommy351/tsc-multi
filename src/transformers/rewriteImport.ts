@@ -48,10 +48,10 @@ export function createRewriteImportTransformer(
       // ESM import
       if (ts.isImportDeclaration(node)) {
         return ts.factory.createImportDeclaration(
-          node.decorators,
           node.modifiers,
           node.importClause,
-          updateModuleSpecifier(sourceFile, node.moduleSpecifier)
+          updateModuleSpecifier(sourceFile, node.moduleSpecifier),
+          node.assertClause
         );
       }
 
@@ -60,11 +60,11 @@ export function createRewriteImportTransformer(
         if (!node.moduleSpecifier) return node;
 
         return ts.factory.createExportDeclaration(
-          node.decorators,
           node.modifiers,
           node.isTypeOnly,
           node.exportClause,
-          updateModuleSpecifier(sourceFile, node.moduleSpecifier)
+          updateModuleSpecifier(sourceFile, node.moduleSpecifier),
+          node.assertClause
         );
       }
 
@@ -104,7 +104,7 @@ export function createRewriteImportTransformer(
 
     return (file) => {
       sourceFile = file;
-      return ts.visitNode(file, visitor);
+      return ts.visitNode(file, visitor) as ts.SourceFile;
     };
   };
 }
