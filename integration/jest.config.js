@@ -5,5 +5,5 @@ module.exports = {
   testEnvironment: "node",
   watchPathIgnorePatterns: ["__fixtures__/output"],
   testTimeout: 30000,
-  setupFilesAfterEnv: ["jest-extended"],
+  setupFilesAfterEnv: ["jest-extended/all"],
 };

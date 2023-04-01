@@ -2,7 +2,7 @@ import yargs from "yargs/yargs";
 import { build } from "./build";
 import { loadConfig, resolveProjectPath } from "./config";
 
-const args = yargs(process.argv.slice(2))
+yargs(process.argv.slice(2))
   .options({
     watch: {
       type: "boolean",
@@ -49,6 +49,7 @@ const args = yargs(process.argv.slice(2))
     (cmd) => {
       return cmd
         .positional("projects", {
+          array: true,
           type: "string",
           description:
             "Path of TypeScript projects or tsconfig.json files. Default to $CWD.",
@@ -60,41 +61,33 @@ const args = yargs(process.argv.slice(2))
           ["$0 --config ./conf.json", "Custom config path."],
           ["$0 ./pkg-a ./pkg-b", "Build multiple projects."],
         ]);
+    },
+    async (args) => {
+      const projects = args.projects || [];
+      const config = await loadConfig({
+        cwd: args.cwd,
+        path: args.config,
+      });
+      if (projects.length) {
+        config.projects = await resolveProjectPath(config.cwd, projects);
+      }
+      if (!config.projects.length) {
+        config.projects = [config.cwd];
+      }
+      if (args.compiler) {
+        config.compiler = args.compiler;
+      }
+
+      process.exitCode = await build({
+        ...config,
+        verbose: args.verbose,
+        dry: args.dry,
+        force: args.force,
+        watch: args.watch,
+        clean: args.clean,
+        maxWorkers: args.maxWorkers,
+      });
     }
   )
-  .showHelpOnFail(false).argv;
-
-(async () => {
-  const projects = ([] as string[]).concat(args.projects || []);
-  const config = await loadConfig({
-    cwd: args.cwd,
-    path: args.config,
-  });
-
-  if (projects.length) {
-    config.projects = await resolveProjectPath(config.cwd, projects);
-  }
-
-  if (!config.projects.length) {
-    config.projects = [config.cwd];
-  }
-
-  if (args.compiler) {
-    config.compiler = args.compiler;
-  }
-
-  const code = await build({
-    ...config,
-    verbose: args.verbose,
-    dry: args.dry,
-    force: args.force,
-    watch: args.watch,
-    clean: args.clean,
-    maxWorkers: args.maxWorkers,
-  });
-
-  process.exitCode = code;
-})().catch((err) => {
-  console.error(err);
-  process.exitCode = 1;
-});
+  .showHelpOnFail(false)
+  .parse();

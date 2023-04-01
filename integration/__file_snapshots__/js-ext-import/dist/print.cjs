@@ -1,6 +1,6 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 function print() {
     console.log("Hello world");
 }
-exports["default"] = print;
+exports.default = print;

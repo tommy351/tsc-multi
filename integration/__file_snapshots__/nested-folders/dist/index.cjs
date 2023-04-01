@@ -1,5 +1,5 @@
 "use strict";
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var name_1 = require("./name.cjs");
 var print_1 = require("./print/index.cjs");
-print_1["default"](name_1["default"]);
+(0, print_1.default)(name_1.default);

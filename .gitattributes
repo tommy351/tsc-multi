@@ -1,0 +1,6 @@
+* text=auto
+
+# Set EOL of file snapshots as LF because TypeScript generates LF line endings
+# by default since 5.0.
+# https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/#deprecations-and-default-changes
+integration/__file_snapshots__/**/* text eol=lf

@@ -1,8 +1,5 @@
-import fs from "fs";
+import { readFile } from "fs/promises";
 import ts from "typescript";
-import { promisify } from "util";
-
-const readFile = promisify(fs.readFile);
 
 export function trimPrefix(input: string, prefix: string): string {
   if (input.startsWith(prefix)) {
@@ -34,18 +31,18 @@ export async function tryReadJSON(path: string): Promise<any> {
   }
 }
 
+function mergeArray<T>(target: T[] = [], source: T[] = []): T[] {
+  return [...target, ...source];
+}
+
 export function mergeCustomTransformers(
   target: ts.CustomTransformers,
   source: ts.CustomTransformers
 ): ts.CustomTransformers {
-  function merge<T>(target: T[] = [], source: T[] = []): T[] {
-    return [...target, ...source];
-  }
-
   return {
-    before: merge(target.before, source.before),
-    after: merge(target.after, source.after),
-    afterDeclarations: merge(
+    before: mergeArray(target.before, source.before),
+    after: mergeArray(target.after, source.after),
+    afterDeclarations: mergeArray(
       target.afterDeclarations,
       source.afterDeclarations
     ),

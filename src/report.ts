@@ -13,7 +13,7 @@ export interface Reporter {
 export interface ReporterOptions {
   cwd: string;
   system: ts.System;
-  formatDiagnostics: typeof ts["formatDiagnostics"];
+  formatDiagnostics: (typeof ts)["formatDiagnostics"];
   output: Writable;
   prefix?: string;
 }

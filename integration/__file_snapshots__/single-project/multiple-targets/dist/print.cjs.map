@@ -1,1 +1,1 @@
-{"version":3,"file":"print.cjs","sourceRoot":"","sources":["../src/print.ts"],"names":[],"mappings":";;AAAA,SAAwB,KAAK,CAAC,IAAY;IACxC,OAAO,CAAC,GAAG,CAAC,WAAS,IAAM,CAAC,CAAC;AAC/B,CAAC;AAFD,2BAEC"}
+{"version":3,"file":"print.cjs","sourceRoot":"","sources":["../src/print.ts"],"names":[],"mappings":";;AAAA,SAAwB,KAAK,CAAC,IAAY;IACxC,OAAO,CAAC,GAAG,CAAC,gBAAS,IAAI,CAAE,CAAC,CAAC;AAC/B,CAAC;AAFD,wBAEC"}
