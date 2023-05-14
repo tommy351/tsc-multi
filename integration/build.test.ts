@@ -814,3 +814,23 @@ describe("TypeScript 4", () => {
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 });
+
+describe("resolveJsonModule", () => {
+  beforeEach(async () => {
+    await copyInputFixture("resolve-json-module");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI([]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("resolve-json-module");
+  });
+});

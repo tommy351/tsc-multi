@@ -3,6 +3,7 @@ import type ts from "typescript";
 import { trimSuffix } from "../utils";
 
 const JS_EXT = ".js";
+const JSON_EXT = ".json";
 
 function isRelativePath(path: string): boolean {
   return path.startsWith("./") || path.startsWith("../");
@@ -38,6 +39,7 @@ export function createRewriteImportTransformer(
   }
 
   function updateModuleSpecifier(
+    ctx: ts.TransformationContext,
     sourceFile: ts.SourceFile,
     node: ts.Expression
   ): ts.Expression {
@@ -50,6 +52,11 @@ export function createRewriteImportTransformer(
     }
 
     const ext = extname(node.text);
+
+    if (ext === JSON_EXT && ctx.getCompilerOptions().resolveJsonModule) {
+      return node;
+    }
+
     const base = ext === JS_EXT ? trimSuffix(node.text, JS_EXT) : node.text;
 
     return factory.createStringLiteral(`${base}${options.extname}`);
@@ -64,7 +71,7 @@ export function createRewriteImportTransformer(
         return factory.createImportDeclaration(
           node.modifiers,
           node.importClause,
-          updateModuleSpecifier(sourceFile, node.moduleSpecifier),
+          updateModuleSpecifier(ctx, sourceFile, node.moduleSpecifier),
           node.assertClause
         );
       }
@@ -77,7 +84,7 @@ export function createRewriteImportTransformer(
           node.modifiers,
           node.isTypeOnly,
           node.exportClause,
-          updateModuleSpecifier(sourceFile, node.moduleSpecifier),
+          updateModuleSpecifier(ctx, sourceFile, node.moduleSpecifier),
           node.assertClause
         );
       }
@@ -93,7 +100,7 @@ export function createRewriteImportTransformer(
         return factory.createCallExpression(
           node.expression,
           node.typeArguments,
-          [updateModuleSpecifier(sourceFile, firstArg), ...restArg]
+          [updateModuleSpecifier(ctx, sourceFile, firstArg), ...restArg]
         );
       }
 
@@ -109,7 +116,7 @@ export function createRewriteImportTransformer(
         return factory.createCallExpression(
           node.expression,
           node.typeArguments,
-          [updateModuleSpecifier(sourceFile, firstArg), ...restArgs]
+          [updateModuleSpecifier(ctx, sourceFile, firstArg), ...restArgs]
         );
       }
 
