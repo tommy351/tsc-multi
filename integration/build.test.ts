@@ -118,6 +118,38 @@ describe("single project", () => {
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
+  test("only type commonjs", async () => {
+    await writeConfig({
+      targets: [{ type: "commonjs" }],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/only-commonjs");
+
+    // Check if the output files are executable
+    const result = await runCJSModule("dist/index.js");
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+
+  test("only type module", async () => {
+    await writeConfig({
+      targets: [
+        { type: "module", module: "esnext", moduleResolution: "node16" },
+      ],
+    });
+
+    const { exitCode } = await runCLI(["--verbose"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project/only-esnext");
+
+    // Check if the output files are executable
+    const result = await runESMModule("dist/index.js");
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+
   test("multiple targets", async () => {
     await writeConfig({
       targets: [

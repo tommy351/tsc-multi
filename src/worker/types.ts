@@ -3,6 +3,7 @@ import { Target } from "../config";
 export interface WorkerOptions {
   target: Omit<Target, "extname">;
   extname?: string;
+  type?: "commonjs" | "module";
   verbose?: boolean;
   dry?: boolean;
   force?: boolean;

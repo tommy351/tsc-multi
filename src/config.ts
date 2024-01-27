@@ -10,6 +10,8 @@ import {
   integer,
   min,
   boolean,
+  literal,
+  union,
 } from "superstruct";
 import Debug from "./debug";
 import { readJSON, tryReadJSON } from "./utils";
@@ -20,6 +22,7 @@ const debug = Debug.extend("config");
 const targetSchema = type({
   extname: optional(string()),
   transpileOnly: optional(boolean()),
+  type: optional(union([literal("commonjs"), literal("module")])),
 });
 
 export type Target = Infer<typeof targetSchema> & { [key: string]: unknown };

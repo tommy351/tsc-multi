@@ -21,6 +21,16 @@ function loadCompiler(cwd: string, name = "typescript"): TS {
   return require(path);
 }
 
+// Any paths given by typescript will be normalized to forward slashes.
+// Local paths should be normalized to make any comparisons.
+const directorySeparator = "/";
+const backslashRegExp = /\\/g;
+function normalizeSlashes(path: string): string {
+  return path.includes("\\")
+    ? path.replace(backslashRegExp, directorySeparator)
+    : path;
+}
+
 export class Worker {
   private readonly ts: TS;
   private readonly system: ts.System;
@@ -104,22 +114,53 @@ export class Worker {
       return paths;
     };
 
+    const readFileAllowingRewrittenPaths: ts.System["readFile"] = (
+      inputPath,
+      encoding
+    ) => {
+      return (
+        getReadPaths(inputPath).reduce<string | undefined | null>(
+          (result, path) => result ?? sys.readFile(path, encoding),
+          null
+        ) ?? undefined
+      );
+    };
+
+    const localPackageJsonPath = normalizeSlashes(
+      join(this.data.cwd, "package.json")
+    );
+    const readFileOverridingPackageJsonType: ts.System["readFile"] = (
+      inputPath,
+      encoding
+    ) => {
+      if (inputPath === localPackageJsonPath) {
+        const packageJsonText = sys.readFile(inputPath, encoding);
+        if (packageJsonText === undefined) {
+          return undefined;
+        }
+        const packageJson = JSON.parse(packageJsonText);
+        packageJson.type = this.data.type;
+        return JSON.stringify(packageJson);
+      }
+
+      return readFileAllowingRewrittenPaths(inputPath, encoding);
+    };
+
     return {
       ...sys,
       fileExists: (inputPath) => {
+        // Consider faking existence if an override is present
+        if (inputPath === localPackageJsonPath) {
+          // throw new Error("looking for package.json");
+        }
         return getReadPaths(inputPath).reduce<boolean>(
           (result, path) => result || sys.fileExists(path),
           false
         );
       },
-      readFile: (inputPath, encoding) => {
-        return (
-          getReadPaths(inputPath).reduce<string | undefined | null>(
-            (result, path) => result ?? sys.readFile(path, encoding),
-            null
-          ) ?? undefined
-        );
-      },
+      readFile: this.data.type
+        ? readFileOverridingPackageJsonType
+        : readFileAllowingRewrittenPaths,
       writeFile: (path, data, writeByteOrderMark) => {
         const newPath = this.rewritePath(path);
         const newData = (() => {
@@ -227,11 +268,13 @@ export class Worker {
       // access the same tsbuildinfo files and potentially read/write corrupted
       // tsbuildinfo files
       if (
-        this.data.extname &&
         !config.options.tsBuildInfoFile &&
-        isIncrementalCompilation(config.options)
+        isIncrementalCompilation(config.options) &&
+        (this.data.extname || this.data.type)
       ) {
-        config.options.tsBuildInfoFile = `${basePath}${this.data.extname}.tsbuildinfo`;
+        config.options.tsBuildInfoFile = `${basePath}${this.data.type ?? ""}${
+          this.data.extname ?? ""
+        }.tsbuildinfo`;
       }
 
       return config;
