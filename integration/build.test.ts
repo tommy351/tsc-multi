@@ -118,38 +118,6 @@ describe("single project", () => {
     expect(result.stdout).toEqual("Hello TypeScript");
   });
 
-  test("only type commonjs", async () => {
-    await writeConfig({
-      targets: [{ type: "commonjs" }],
-    });
-
-    const { exitCode } = await runCLI();
-    expect(exitCode).toEqual(0);
-
-    await matchOutputFiles("single-project/only-commonjs");
-
-    // Check if the output files are executable
-    const result = await runCJSModule("dist/index.js");
-    expect(result.stdout).toEqual("Hello TypeScript");
-  });
-
-  test("only type module", async () => {
-    await writeConfig({
-      targets: [
-        { type: "module", module: "esnext", moduleResolution: "node16" },
-      ],
-    });
-
-    const { exitCode } = await runCLI(["--verbose"]);
-    expect(exitCode).toEqual(0);
-
-    await matchOutputFiles("single-project/only-esnext");
-
-    // Check if the output files are executable
-    const result = await runESMModule("dist/index.js");
-    expect(result.stdout).toEqual("Hello TypeScript");
-  });
-
   test("multiple targets", async () => {
     await writeConfig({
       targets: [
@@ -288,7 +256,7 @@ describe("single project", () => {
 
     expect(stderr).toEqual(
       expect.stringContaining(
-        `targets[1].extname is already used in targets[0].extname`
+        `targets[1].extname and/or .outDir is already used in targets[0]`
       )
     );
   });
@@ -307,7 +275,7 @@ describe("single project", () => {
 
     expect(stderr).toEqual(
       expect.stringContaining(
-        `targets[2].extname is already used in targets[0].extname`
+        `targets[2].extname and/or .outDir is already used in targets[0]`
       )
     );
   });
@@ -395,6 +363,68 @@ describe("single project", () => {
     expect(exitCode).toEqual(0);
 
     await matchOutputFiles("single-project/multiple-targets");
+  });
+});
+
+describe("single project node16", () => {
+  beforeEach(async () => {
+    await copyInputFixture("single-project-node16");
+  });
+
+  test("only commonjs", async () => {
+    await writeConfig({
+      targets: [{ packageOverrides: { "package.json": { type: "commonjs" } } }],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project-node16/only-commonjs");
+
+    // Check if the output files are executable
+    const result = await runCJSModule("dist/index.js");
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+
+  test("only module", async () => {
+    await writeConfig({
+      targets: [{ packageOverrides: { "package.json": { type: "module" } } }],
+    });
+
+    const { exitCode } = await runCLI(["--verbose"]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project-node16/only-module");
+
+    // Check if the output files are executable
+    const result = await runESMModule("dist/index.js");
+    expect(result.stdout).toEqual("Hello TypeScript");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        {
+          packageOverrides: { "package.json": { type: "commonjs" } },
+          outDir: "cjs",
+        },
+        {
+          packageOverrides: { "package.json": { type: "module" } },
+          outDir: "esm",
+        },
+      ] as Target[],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("single-project-node16/multiple-targets");
+
+    // Check if the output files are executable
+    const cjsResult = await runCJSModule("cjs/index.js");
+    expect(cjsResult.stdout).toEqual("Hello TypeScript");
+    const esmResult = await runESMModule("esm/index.js");
+    expect(esmResult.stdout).toEqual("Hello TypeScript");
   });
 });
 

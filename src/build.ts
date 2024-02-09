@@ -16,25 +16,44 @@ const DEFAULT_EXTNAME = ".js";
 type Stdio = "ignore" | "inherit" | Stream;
 
 function validateTargets(targets: readonly Target[]) {
-  const extnames = targets.map((target) => target.extname || DEFAULT_EXTNAME);
-  const extMap = new Map<string, number>();
+  const outputDifferentiation = targets.map(
+    (target) =>
+      `${target.extname || DEFAULT_EXTNAME}+${
+        target.outDir ?? "<tscfg-outdir>"
+      }`
+  );
+  const outputMap = new Map<
+    string,
+    { index: number; outDir: string | undefined }
+  >();
 
-  for (let i = 0; i < extnames.length; i++) {
-    const ext = extnames[i];
+  for (let i = 0; i < outputDifferentiation.length; i++) {
+    const uniqueOutput = outputDifferentiation[i];
 
-    if (!ext.startsWith(".")) {
+    if (!uniqueOutput.startsWith(".")) {
       throw new Error(`targets[${i}].extname must be started with ".".`);
     }
 
-    const existedIndex = extMap.get(ext);
+    const existedIndex = outputMap.get(uniqueOutput);
 
-    if (existedIndex != null) {
+    if (existedIndex !== undefined) {
       throw new Error(
-        `targets[${i}].extname is already used in targets[${existedIndex}].extname`
+        `targets[${i}].extname and/or .outDir is already used in targets[${existedIndex.index}]`
       );
     }
 
-    extMap.set(ext, i);
+    outputMap.set(uniqueOutput, { index: i, outDir: targets[i].outDir });
+
+    const packageOverrides = targets[i].packageOverrides;
+    if (packageOverrides) {
+      Object.keys(packageOverrides).forEach((packageName) => {
+        if (!packageName.endsWith("package.json")) {
+          throw new Error(
+            `targets[${i}].packageOverrides[${packageName}] may only reference "package.json" paths`
+          );
+        }
+      });
+    }
   }
 }
 
@@ -103,24 +122,26 @@ export async function build({
   const reportStyles = getReportStyles();
 
   const codes = await pAll(
-    targets.map(({ extname, transpileOnly, type, ...target }, i) => {
-      const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
-      const prefixStyle = reportStyles[i % reportStyles.length];
+    targets.map(
+      ({ extname, transpileOnly, packageOverrides, ...target }, i) => {
+        const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
+        const prefixStyle = reportStyles[i % reportStyles.length];
 
-      return () => {
-        return runWorker({
-          ...options,
-          projects,
-          stdout,
-          stderr,
-          extname,
-          type,
-          target,
-          reportPrefix: prefixStyle(prefix),
-          transpileOnly,
-        });
-      };
-    }),
+        return () => {
+          return runWorker({
+            ...options,
+            projects,
+            stdout,
+            stderr,
+            extname,
+            packageOverrides,
+            target,
+            reportPrefix: prefixStyle(prefix),
+            transpileOnly,
+          });
+        };
+      }
+    ),
     { concurrency: maxWorkers }
   );
 

@@ -3,7 +3,10 @@ import { Target } from "../config";
 export interface WorkerOptions {
   target: Omit<Target, "extname">;
   extname?: string;
-  type?: "commonjs" | "module";
+  packageOverrides?: Record<
+    string,
+    Record<string, unknown> & { type?: "commonjs" | "module" }
+  >;
   verbose?: boolean;
   dry?: boolean;
   force?: boolean;

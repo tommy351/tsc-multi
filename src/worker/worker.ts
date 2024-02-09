@@ -31,6 +31,23 @@ function normalizeSlashes(path: string): string {
     : path;
 }
 
+function hashPackageOverrides(overrides: WorkerOptions["packageOverrides"]) {
+  if (overrides === undefined) return "";
+
+  const str = JSON.stringify(overrides);
+  if (str.length === 0) return "";
+
+  let hash = 0,
+    i,
+    chr;
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+}
+
 export class Worker {
   private readonly ts: TS;
   private readonly system: ts.System;
@@ -126,21 +143,25 @@ export class Worker {
       );
     };
 
-    const localPackageJsonPath = normalizeSlashes(
-      join(this.data.cwd, "package.json")
-    );
-    const readFileOverridingPackageJsonType: ts.System["readFile"] = (
+    const localPackageOverrides = Object.entries(
+      this.data.packageOverrides ?? {}
+    ).reduce((prev, [path, overrides]) => {
+      prev[normalizeSlashes(join(this.data.cwd, path))] = overrides;
+      return prev;
+    }, {} as Exclude<typeof this.data.packageOverrides, undefined>);
+
+    const readFileOverridingPackageJson: ts.System["readFile"] = (
       inputPath,
       encoding
     ) => {
-      if (inputPath === localPackageJsonPath) {
+      const overrides = localPackageOverrides[inputPath];
+      if (overrides) {
         const packageJsonText = sys.readFile(inputPath, encoding);
         if (packageJsonText === undefined) {
           return undefined;
         }
         const packageJson = JSON.parse(packageJsonText);
-        packageJson.type = this.data.type;
-        return JSON.stringify(packageJson);
+        return JSON.stringify({ ...packageJson, ...overrides });
       }
 
       return readFileAllowingRewrittenPaths(inputPath, encoding);
@@ -150,16 +171,16 @@ export class Worker {
       ...sys,
       fileExists: (inputPath) => {
         // Consider faking existence if an override is present
-        if (inputPath === localPackageJsonPath) {
-          // throw new Error("looking for package.json");
+        if (localPackageOverrides[inputPath]) {
+          // throw new Error(`looking for ${localPackageOverrides[inputPath]} with override`);
         }
         return getReadPaths(inputPath).reduce<boolean>(
           (result, path) => result || sys.fileExists(path),
           false
         );
       },
-      readFile: this.data.type
-        ? readFileOverridingPackageJsonType
+      readFile: this.data.packageOverrides
+        ? readFileOverridingPackageJson
         : readFileAllowingRewrittenPaths,
       writeFile: (path, data, writeByteOrderMark) => {
         const newPath = this.rewritePath(path);
@@ -270,11 +291,11 @@ export class Worker {
       if (
         !config.options.tsBuildInfoFile &&
         isIncrementalCompilation(config.options) &&
-        (this.data.extname || this.data.type)
+        (this.data.extname || this.data.packageOverrides)
       ) {
-        config.options.tsBuildInfoFile = `${basePath}${this.data.type ?? ""}${
+        config.options.tsBuildInfoFile = `${basePath}${
           this.data.extname ?? ""
-        }.tsbuildinfo`;
+        }${hashPackageOverrides(this.data.packageOverrides)}.tsbuildinfo`;
       }
 
       return config;
