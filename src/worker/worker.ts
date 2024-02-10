@@ -37,12 +37,9 @@ function hashPackageOverrides(overrides: WorkerOptions["packageOverrides"]) {
   const str = JSON.stringify(overrides);
   if (str.length === 0) return "";
 
-  let hash = 0,
-    i,
-    chr;
-  for (i = 0; i < str.length; i++) {
-    chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
     hash |= 0; // Convert to 32bit integer
   }
   return hash;
@@ -170,10 +167,7 @@ export class Worker {
     return {
       ...sys,
       fileExists: (inputPath) => {
-        // Consider faking existence if an override is present
-        if (localPackageOverrides[inputPath]) {
-          // throw new Error(`looking for ${localPackageOverrides[inputPath]} with override`);
-        }
+        // FUTURE: Consider faking existence if an override is present
         return getReadPaths(inputPath).reduce<boolean>(
           (result, path) => result || sys.fileExists(path),
           false

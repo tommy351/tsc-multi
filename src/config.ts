@@ -10,10 +10,10 @@ import {
   integer,
   min,
   boolean,
-  literal,
-  union,
-  record,
   intersection,
+  literal,
+  record,
+  union,
   unknown,
 } from "superstruct";
 import Debug from "./debug";
