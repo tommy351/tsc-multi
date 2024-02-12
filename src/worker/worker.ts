@@ -37,9 +37,10 @@ function hashPackageOverrides(overrides: WorkerOptions["packageOverrides"]) {
   const str = JSON.stringify(overrides);
   if (str.length === 0) return "";
 
-  let hash = 0;
+  // An implementation of DJB2 string hashing algorithm
+  let hash = 5381;
   for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash = (hash << 5) + hash + str.charCodeAt(i); // hash * 33 + c
     hash |= 0; // Convert to 32bit integer
   }
   return hash;
