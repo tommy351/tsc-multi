@@ -280,6 +280,21 @@ describe("single project", () => {
     );
   });
 
+  test("package override does not end with package.json", async () => {
+    await writeConfig({
+      targets: [{ packageOverrides: { "pkg.json": {} } }],
+    });
+
+    const { exitCode, stderr } = await runCLI([], { reject: false });
+    expect(exitCode).not.toEqual(0);
+
+    expect(stderr).toEqual(
+      expect.stringContaining(
+        `targets[0].packageOverrides[pkg.json] may only reference "package.json" paths`
+      )
+    );
+  });
+
   test("set declarationDir in target", async () => {
     await writeConfig({
       targets: [{ declarationDir: "./types" }],

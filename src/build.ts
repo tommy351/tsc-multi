@@ -15,7 +15,24 @@ const DEFAULT_EXTNAME = ".js";
 
 type Stdio = "ignore" | "inherit" | Stream;
 
+/**
+ * Validates collection of {@link Target} objects including that they can be
+ * used in conjunction with each other.
+ *
+ * 1. Asserts that the extname of each target starts with a period.
+ * 2. Asserts that collection of targets generates unique output file paths.
+ *    Either the extensions must be different or the output directories must
+ *    be different.
+ * 3. Asserts that packageOverrides only reference "package.json" paths.
+ *
+ * @param targets - Collection of targets
+ *
+ * @remarks Does not validate that out directory specified in any target is
+ * unique compared to a target using the value from tsconfig settings.
+ */
 function validateTargets(targets: readonly Target[]) {
+  // Create array of strings representing the combination of extensions
+  // output and output directory.
   const outputDifferentiation = targets.map(
     (target) =>
       `${target.extname || DEFAULT_EXTNAME}+${
@@ -36,6 +53,7 @@ function validateTargets(targets: readonly Target[]) {
 
     const existedIndex = outputMap.get(uniqueOutput);
 
+    // Confirm output is unique.
     if (existedIndex !== undefined) {
       throw new Error(
         `targets[${i}].extname and/or .outDir is already used in targets[${existedIndex.index}]`
