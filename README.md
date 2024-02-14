@@ -72,12 +72,16 @@ tsc-multi --clean
 
 ### `targets`
 
-Build targets. All options except `extname` will override `compilerOptions` in `tsconfig.json`.
+Build targets. All options except `extname` and `packageOverrides` will override `compilerOptions` in `tsconfig.json`.
 
 ```js
 {
   // Rename the extension of output files
   extname: ".js",
+  // Set the output package type to module
+  packageOverrides: {
+    "package.json": { "type": "module" }
+  },
   // Skip type-checking (Experimental)
   transpileOnly: false,
   // Compiler options

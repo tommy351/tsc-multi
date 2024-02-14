@@ -15,26 +15,63 @@ const DEFAULT_EXTNAME = ".js";
 
 type Stdio = "ignore" | "inherit" | Stream;
 
+/**
+ * Validates collection of {@link Target} objects including that they can be
+ * used in conjunction with each other.
+ *
+ * 1. Asserts that the extname of each target starts with a period.
+ * 2. Asserts that collection of targets generates unique output file paths.
+ *    Either the extensions must be different or the output directories must
+ *    be different.
+ * 3. Asserts that packageOverrides only reference "package.json" paths.
+ *
+ * @param targets - Collection of targets
+ *
+ * @remarks Does not validate that out directory specified in any target is
+ * unique compared to a target using the value from tsconfig settings.
+ */
 function validateTargets(targets: readonly Target[]) {
-  const extnames = targets.map((target) => target.extname || DEFAULT_EXTNAME);
-  const extMap = new Map<string, number>();
+  // Create array of strings representing the combination of extensions
+  // output and output directory.
+  const outputDifferentiation = targets.map(
+    (target) =>
+      `${target.extname || DEFAULT_EXTNAME}+${
+        target.outDir ?? "<tscfg-outdir>"
+      }`
+  );
+  const outputMap = new Map<
+    string,
+    { index: number; outDir: string | undefined }
+  >();
 
-  for (let i = 0; i < extnames.length; i++) {
-    const ext = extnames[i];
+  for (let i = 0; i < outputDifferentiation.length; i++) {
+    const uniqueOutput = outputDifferentiation[i];
 
-    if (!ext.startsWith(".")) {
+    if (!uniqueOutput.startsWith(".")) {
       throw new Error(`targets[${i}].extname must be started with ".".`);
     }
 
-    const existedIndex = extMap.get(ext);
+    const existedIndex = outputMap.get(uniqueOutput);
 
-    if (existedIndex != null) {
+    // Confirm output is unique.
+    if (existedIndex !== undefined) {
       throw new Error(
-        `targets[${i}].extname is already used in targets[${existedIndex}].extname`
+        `targets[${i}].extname and/or .outDir is already used in targets[${existedIndex.index}]`
       );
     }
 
-    extMap.set(ext, i);
+    outputMap.set(uniqueOutput, { index: i, outDir: targets[i].outDir });
+
+    const packageOverrides = targets[i].packageOverrides;
+    if (packageOverrides) {
+      Object.keys(packageOverrides).forEach((packageName) => {
+        if (!packageName.endsWith("package.json")) {
+          throw new Error(
+            `targets[${i}].packageOverrides[${packageName}] may only reference "package.json" paths`
+          );
+        }
+      });
+    }
   }
 }
 
@@ -103,23 +140,26 @@ export async function build({
   const reportStyles = getReportStyles();
 
   const codes = await pAll(
-    targets.map(({ extname, transpileOnly, ...target }, i) => {
-      const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
-      const prefixStyle = reportStyles[i % reportStyles.length];
+    targets.map(
+      ({ extname, transpileOnly, packageOverrides, ...target }, i) => {
+        const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
+        const prefixStyle = reportStyles[i % reportStyles.length];
 
-      return () => {
-        return runWorker({
-          ...options,
-          projects,
-          stdout,
-          stderr,
-          extname,
-          target,
-          reportPrefix: prefixStyle(prefix),
-          transpileOnly,
-        });
-      };
-    }),
+        return () => {
+          return runWorker({
+            ...options,
+            projects,
+            stdout,
+            stderr,
+            extname,
+            packageOverrides,
+            target,
+            reportPrefix: prefixStyle(prefix),
+            transpileOnly,
+          });
+        };
+      }
+    ),
     { concurrency: maxWorkers }
   );
 

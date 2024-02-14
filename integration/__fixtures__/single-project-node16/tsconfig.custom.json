@@ -1,0 +1,7 @@
+{
+  "compilerOptions": {
+    "outDir": "lib",
+    "rootDir": "src",
+    "moduleResolution": "node"
+  }
+}

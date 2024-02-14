@@ -21,6 +21,44 @@ function loadCompiler(cwd: string, name = "typescript"): TS {
   return require(path);
 }
 
+// Any paths given by typescript will be normalized to forward slashes.
+// Local paths should be normalized to make any comparisons.
+const directorySeparator = "/";
+const backslashRegExp = /\\/g;
+function normalizeSlashes(path: string): string {
+  return path.includes("\\")
+    ? path.replace(backslashRegExp, directorySeparator)
+    : path;
+}
+
+/**
+ * Create a unique key for the packageOverrides content to
+ *   1. Avoid multiple workers to access the same tsbuildinfo files
+ *   2. Force recompile when the packageOverrides content changes
+ *
+ * @param overrides - `packageOverrides` from single tsc-multi configuration target
+ * @returns a string that is unique to the packageOverrides content
+ *
+ * @remarks Instead of content based key, outDir may be viable to solve
+ * the unique worker aspect. Then it would be up to tsc to handle the
+ * settings changes, which would need to consider package.json changes.
+ */
+function configKeyForPackageOverrides(
+  overrides: WorkerOptions["packageOverrides"]
+) {
+  if (overrides === undefined) return "";
+
+  const str = JSON.stringify(overrides);
+
+  // An implementation of DJB2 string hashing algorithm
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) + hash + str.charCodeAt(i); // hash * 33 + c
+    hash |= 0; // Convert to 32bit integer
+  }
+  return `.${hash}`;
+}
+
 export class Worker {
   private readonly ts: TS;
   private readonly system: ts.System;
@@ -104,22 +142,54 @@ export class Worker {
       return paths;
     };
 
+    const readFileAllowingRewrittenPaths: ts.System["readFile"] = (
+      inputPath,
+      encoding
+    ) => {
+      return (
+        getReadPaths(inputPath).reduce<string | undefined | null>(
+          (result, path) => result ?? sys.readFile(path, encoding),
+          null
+        ) ?? undefined
+      );
+    };
+
+    const localPackageOverrides = Object.entries(
+      this.data.packageOverrides ?? {}
+    ).reduce((prev, [path, overrides]) => {
+      prev[normalizeSlashes(join(this.data.cwd, path))] = overrides;
+      return prev;
+    }, {} as Exclude<typeof this.data.packageOverrides, undefined>);
+
+    const readFileOverridingPackageJson: ts.System["readFile"] = (
+      inputPath,
+      encoding
+    ) => {
+      const overrides = localPackageOverrides[inputPath];
+      if (overrides) {
+        const packageJsonText = sys.readFile(inputPath, encoding);
+        if (packageJsonText === undefined) {
+          return undefined;
+        }
+        const packageJson = JSON.parse(packageJsonText);
+        return JSON.stringify({ ...packageJson, ...overrides });
+      }
+
+      return readFileAllowingRewrittenPaths(inputPath, encoding);
+    };
+
     return {
       ...sys,
       fileExists: (inputPath) => {
+        // FUTURE: Consider faking existence if an override is present
         return getReadPaths(inputPath).reduce<boolean>(
           (result, path) => result || sys.fileExists(path),
           false
         );
       },
-      readFile: (inputPath, encoding) => {
-        return (
-          getReadPaths(inputPath).reduce<string | undefined | null>(
-            (result, path) => result ?? sys.readFile(path, encoding),
-            null
-          ) ?? undefined
-        );
-      },
+      readFile: this.data.packageOverrides
+        ? readFileOverridingPackageJson
+        : readFileAllowingRewrittenPaths,
       writeFile: (path, data, writeByteOrderMark) => {
         const newPath = this.rewritePath(path);
         const newData = (() => {
@@ -227,11 +297,15 @@ export class Worker {
       // access the same tsbuildinfo files and potentially read/write corrupted
       // tsbuildinfo files
       if (
-        this.data.extname &&
         !config.options.tsBuildInfoFile &&
-        isIncrementalCompilation(config.options)
+        isIncrementalCompilation(config.options) &&
+        (this.data.extname || this.data.packageOverrides)
       ) {
-        config.options.tsBuildInfoFile = `${basePath}${this.data.extname}.tsbuildinfo`;
+        config.options.tsBuildInfoFile = `${basePath}${
+          this.data.extname ?? ""
+        }${configKeyForPackageOverrides(
+          this.data.packageOverrides
+        )}.tsbuildinfo`;
       }
 
       return config;
