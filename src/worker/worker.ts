@@ -31,13 +31,24 @@ function normalizeSlashes(path: string): string {
     : path;
 }
 
+/**
+ * Create a unique key for the packageOverrides content to
+ *   1. Avoid multiple workers to access the same tsbuildinfo files
+ *   2. Force recompile when the packageOverrides content changes
+ *
+ * @param overrides - `packageOverrides` from single tsc-multi configuration target
+ * @returns a string that is unique to the packageOverrides content
+ *
+ * @remarks Instead of content based key, outDir may be viable to solve
+ * the unique worker aspect. Then it would be up to tsc to handle the
+ * settings changes, which would need to consider package.json changes.
+ */
 function configKeyForPackageOverrides(
   overrides: WorkerOptions["packageOverrides"]
 ) {
   if (overrides === undefined) return "";
 
   const str = JSON.stringify(overrides);
-  if (str.length === 0) return "";
 
   // An implementation of DJB2 string hashing algorithm
   let hash = 5381;
